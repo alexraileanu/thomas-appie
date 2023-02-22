@@ -17,8 +17,8 @@ import (
 )
 
 type shield struct {
-	Theme string
-	Text  string
+	Theme string `json:"theme"`
+	Text  string `json:"text"`
 }
 
 type discount struct {
