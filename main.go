@@ -9,8 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-co-op/gocron"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -39,32 +41,13 @@ const AppieURL = "https://www.ah.nl/zoeken/api/products/taxonomy-brand?brand=Per
 //const AppieURL = "https://www.ah.nl/zoeken/api/products/taxonomy-brand?brand=Perla%20Huisblends"
 
 func main() {
-	resp, err := makeRequest()
-	if err != nil {
-		panic(err)
-	}
-
-	response := new(productResponse)
-	err = parseBody(resp, &response)
-	if err != nil {
-		panic(err)
-	}
-
-	product := response.Cards[0].Products[0]
-	hasShield := product.Shield != shield{}
-	hasDiscount := product.Discount != discount{}
-
-	msg := "Beans not in bonus :("
-	if hasShield && hasDiscount {
-		msg = fmt.Sprintf(`
-Beans are in bonus!
-
-%s (starts: %s; ends: %s)
-`, product.Shield.Text, product.Discount.Start, product.Discount.End)
-	}
 
 	thomas := initThomas()
-	thomas.ChannelMessageSend(os.Getenv("DISCORD_CHANNEL_ID"), msg)
+
+	s := gocron.NewScheduler(time.Local)
+	s.Every(1).Day().At("10:30").Do(func() {
+		goThomasGo(thomas)
+	})
 
 	handleClose(thomas)
 }
@@ -120,4 +103,32 @@ func parseBody(resp *http.Response, target any) error {
 	}
 
 	return json.Unmarshal(responseBody, target)
+}
+
+func goThomasGo(thomas *discordgo.Session) {
+	resp, err := makeRequest()
+	if err != nil {
+		panic(err)
+	}
+
+	response := new(productResponse)
+	err = parseBody(resp, &response)
+	if err != nil {
+		panic(err)
+	}
+
+	product := response.Cards[0].Products[0]
+	hasShield := product.Shield != shield{}
+	hasDiscount := product.Discount != discount{}
+
+	msg := "Beans not in bonus :("
+	if hasShield && hasDiscount {
+		msg = fmt.Sprintf(`
+Beans are in bonus!
+
+%s (starts: %s; ends: %s)
+`, product.Shield.Text, product.Discount.Start, product.Discount.End)
+	}
+
+	thomas.ChannelMessageSend(os.Getenv("DISCORD_CHANNEL_ID"), msg)
 }
