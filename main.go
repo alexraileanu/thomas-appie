@@ -47,9 +47,10 @@ func main() {
 
 	// scheduler that runs every day at 10AM (for now for debug purposes only)
 	// eventually it will run every monday
-	s.Every(1).Day().At("10:30").Do(func() {
+	s.Every(1).Week().Monday().At("10:30").Do(func() {
 		goThomasGo(thomas)
 	})
+	s.StartBlocking()
 
 	handleClose(thomas)
 }
