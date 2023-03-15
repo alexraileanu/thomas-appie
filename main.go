@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,28 +37,44 @@ type productResponse struct {
 	} `json:"cards"`
 }
 
-const AppieURL = "https://www.ah.nl/zoeken/api/products/taxonomy-brand?brand=Perla%20Superiore"
+type bonusData struct {
+	Shield   shield
+	Discount discount
+}
 
-//const AppieURL = "https://www.ah.nl/zoeken/api/products/taxonomy-brand?brand=Perla%20Huisblends"
+type productToCheck struct {
+	ApiName      string `json:"apiName"`
+	FriendlyName string `json:"friendlyName"`
+	TaxonomyId   int    `json:"taxonomyId"`
+
+	BonusData bonusData
+}
+
+const AppieURL = "https://www.ah.nl/zoeken/api/products/taxonomy-brand?brand=%s&taxonomyId=%d"
 
 func main() {
 	thomas := initThomas()
+	productsToWatch, err := parseProductsJson()
+	if err != nil {
+		panic(err)
+	}
 
 	s := gocron.NewScheduler(time.Local)
 
 	// scheduler that runs every day at 10AM (for now for debug purposes only)
 	// eventually it will run every monday
 	s.Every(1).Week().Monday().At("10:30").Do(func() {
-		goThomasGo(thomas)
+		goThomasGo(thomas, productsToWatch)
 	})
 	s.StartBlocking()
 
 	handleClose(thomas)
 }
 
-// makeRequest gets the product info from the API
-func makeRequest() (*http.Response, error) {
-	req, err := http.NewRequest("GET", AppieURL, bytes.NewBuffer(nil))
+// checkProduct gets the product info from the API
+func checkProduct(product productToCheck) (*http.Response, error) {
+	productUrl := fmt.Sprintf(AppieURL, url.QueryEscape(product.ApiName), product.TaxonomyId)
+	req, err := http.NewRequest("GET", productUrl, bytes.NewBuffer(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -113,34 +130,86 @@ func handleClose(thomas *discordgo.Session) {
 }
 
 // goThomasGo fetches the info from the API and instructs thomas to send the discord message
-func goThomasGo(thomas *discordgo.Session) {
-	resp, err := makeRequest()
-	if err != nil {
-		panic(err)
+func goThomasGo(thomas *discordgo.Session, products []productToCheck) {
+	var productsInBonus []productToCheck
+	var productsNotInBonus []productToCheck
+
+	for _, product := range products {
+		resp, err := checkProduct(product)
+		if err != nil {
+			panic(err)
+		}
+
+		response := new(productResponse)
+		err = parseBody(resp, &response)
+		if err != nil {
+			panic(err)
+		}
+
+		p := response.Cards[0].Products[0]
+
+		// shield and discount hold the actual discount info
+		// the properties aren't actually present if the p is not discounted
+		// so we check if the shield/discount values are equal to their respective empty structs
+		hasShield := p.Shield != shield{}
+		hasDiscount := p.Discount != discount{}
+
+		if hasShield && hasDiscount {
+			productsInBonus = append(productsInBonus, productToCheck{
+				FriendlyName: product.FriendlyName,
+				ApiName:      product.ApiName,
+				BonusData: bonusData{
+					Shield: shield{
+						Text: p.Shield.Text,
+					},
+					Discount: discount{
+						Start: p.Discount.Start,
+						End:   p.Discount.End,
+					},
+				},
+			})
+		} else {
+			productsNotInBonus = append(productsNotInBonus, productToCheck{
+				FriendlyName: product.FriendlyName,
+				ApiName:      product.ApiName,
+			})
+		}
 	}
 
-	response := new(productResponse)
-	err = parseBody(resp, &response)
-	if err != nil {
-		panic(err)
+	var msg string
+
+	if len(productsInBonus) != 0 {
+		msg += "The following products are in bonus. yay!"
+		for _, prod := range productsInBonus {
+			msg += fmt.Sprintf(`
+%s (%s)
+%s
+starts: %s; ends: %s
+`, prod.FriendlyName, prod.ApiName, prod.BonusData.Shield.Text, prod.BonusData.Discount.Start, prod.BonusData.Discount.End)
+		}
+		msg += "\n\n"
 	}
-
-	product := response.Cards[0].Products[0]
-
-	// shield and discount hold the actual discount info
-	// the properties aren't actually present if the product is not discounted
-	// so we check if the shield/discount values are equal to their respective empty structs
-	hasShield := product.Shield != shield{}
-	hasDiscount := product.Discount != discount{}
-
-	msg := "Beans not in bonus :("
-	if hasShield && hasDiscount {
-		msg = fmt.Sprintf(`
-Beans are in bonus!
-
-%s (starts: %s; ends: %s)
-`, product.Shield.Text, product.Discount.Start, product.Discount.End)
+	if len(productsNotInBonus) != 0 {
+		msg += "The following products are not in bonus. :(\n\n"
+		for _, prod := range productsNotInBonus {
+			msg += fmt.Sprintf("%s (%s)\n", prod.FriendlyName, prod.ApiName)
+		}
 	}
 
 	thomas.ChannelMessageSend(os.Getenv("DISCORD_CHANNEL_ID"), msg)
+}
+
+func parseProductsJson() ([]productToCheck, error) {
+	fileContents, err := os.ReadFile(os.Getenv("PRODUCTS_JSON_FILE_PATH"))
+	if err != nil {
+		return nil, err
+	}
+
+	products := new([]productToCheck)
+	err = json.Unmarshal(fileContents, products)
+	if err != nil {
+		return nil, err
+	}
+
+	return *products, nil
 }
