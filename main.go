@@ -176,27 +176,38 @@ func goThomasGo(thomas *discordgo.Session, products []productToCheck) {
 		}
 	}
 
-	var msg string
-
+	var inBonusFields []*discordgo.MessageEmbedField
 	if len(productsInBonus) != 0 {
-		msg += "The following products are in bonus. yay!"
 		for _, prod := range productsInBonus {
-			msg += fmt.Sprintf(`
-%s (%s)
-%s
-starts: %s; ends: %s
-`, prod.FriendlyName, prod.ApiName, prod.BonusData.Shield.Text, prod.BonusData.Discount.Start, prod.BonusData.Discount.End)
-		}
-		msg += "\n\n"
-	}
-	if len(productsNotInBonus) != 0 {
-		msg += "The following products are not in bonus. :(\n\n"
-		for _, prod := range productsNotInBonus {
-			msg += fmt.Sprintf("%s (%s)\n", prod.FriendlyName, prod.ApiName)
+			inBonusFields = append(inBonusFields, &discordgo.MessageEmbedField{
+				Name:  fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
+				Value: fmt.Sprintf("%s; starts: %s, ends: %s", prod.BonusData.Shield.Text, prod.BonusData.Discount.Start, prod.BonusData.Discount.End),
+			})
 		}
 	}
 
-	thomas.ChannelMessageSend(os.Getenv("DISCORD_CHANNEL_ID"), msg)
+	var notInBonusFields []*discordgo.MessageEmbedField
+	if len(productsNotInBonus) != 0 {
+		for _, prod := range productsNotInBonus {
+			notInBonusFields = append(notInBonusFields, &discordgo.MessageEmbedField{
+				Name: fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
+			})
+		}
+	}
+
+	embeds := []*discordgo.MessageEmbed{
+		{
+			Color:  0xff7900,
+			Title:  "Products that are in bonus this week at the Appie",
+			Fields: inBonusFields,
+		},
+		{
+			Title:  "Products that aren't in bonus this week at the Appie",
+			Color:  0xff0000,
+			Fields: notInBonusFields,
+		},
+	}
+	thomas.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
 }
 
 func parseProductsJson() ([]productToCheck, error) {
