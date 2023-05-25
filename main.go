@@ -1,91 +1,68 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/go-co-op/gocron"
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/hasura/go-graphql-client"
 )
 
-type shield struct {
-	Theme string `json:"theme"`
-	Text  string `json:"text"`
-}
-
-type discount struct {
-	Theme string
-	Start string `json:"startDate"`
-	End   string `json:"endDate"`
-}
-
-type productResponse struct {
-	Cards []struct {
-		Products []struct {
-			Shield   shield   `json:"shield"`
-			Discount discount `json:"discount"`
-		} `json:"products"`
-	} `json:"cards"`
-}
-
-type bonusData struct {
-	Shield   shield
-	Discount discount
-}
-
 type productToCheck struct {
-	ApiName      string `json:"apiName"`
-	FriendlyName string `json:"friendlyName"`
-	TaxonomyId   int    `json:"taxonomyId"`
+	ID           int
+	ApiName      string
+	FriendlyName string
+	TaxonomyId   int
 
-	BonusData bonusData
+	BonusData GQLQuery
 }
 
-const AppieURL = "https://www.ah.nl/zoeken/api/products/taxonomy-brand?brand=%s&taxonomyId=%d"
+const AppieURL = "https://www.ah.nl/gql"
 
 func main() {
 	thomas := initThomas()
 
-	s := gocron.NewScheduler(time.Local)
+	//s := gocron.NewScheduler(time.Local)
 
 	// scheduler that runs every day at 10AM (for now for debug purposes only)
 	// eventually it will run every monday
-	s.Every(1).Week().Monday().At("10:30").Do(func() {
-		productsToWatch, err := parseProductsJson()
-		if err != nil {
-			panic(err)
-		}
-		goThomasGo(thomas, productsToWatch)
-	})
-	s.StartBlocking()
+	//s.Every(1).Week().Monday().At("10:30").Do(func() {
+	productsToWatch, err := parseProductsJson()
+	if err != nil {
+		panic(err)
+	}
+	goThomasGo(nil, productsToWatch)
+	//})
+	//s.StartBlocking()
 
 	handleClose(thomas)
 }
 
 // checkProduct gets the product info from the API
-func checkProduct(product productToCheck) (*http.Response, error) {
-	productUrl := fmt.Sprintf(AppieURL, url.QueryEscape(product.ApiName), product.TaxonomyId)
-	req, err := http.NewRequest("GET", productUrl, bytes.NewBuffer(nil))
-	if err != nil {
-		return nil, err
+func checkProduct(product productToCheck) (GQLQuery, error) {
+	gql := new(Query)
+	client := graphql.NewClient(AppieURL, nil).WithRequestModifier(func(request *http.Request) {
+		request.Header.Add("client-name", "ah-products")
+		request.Header.Add("client-version", "6.462.0")
+	})
+	vars := map[string]interface{}{
+		"id":   product.ID,
+		"date": time.Now().Format("2006-01-02"),
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	err := client.Query(context.Background(), &gql.Query, vars)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return resp, nil
+	return gql.Query, nil
 }
 
 // initThomas makes the initial connection to discord
@@ -135,38 +112,16 @@ func goThomasGo(thomas *discordgo.Session, products []productToCheck) {
 	var productsNotInBonus []productToCheck
 
 	for _, product := range products {
-		resp, err := checkProduct(product)
+		response, err := checkProduct(product)
 		if err != nil {
 			panic(err)
 		}
-
-		response := new(productResponse)
-		err = parseBody(resp, &response)
-		if err != nil {
-			panic(err)
-		}
-
-		p := response.Cards[0].Products[0]
-
-		// shield and discount hold the actual discount info
-		// the properties aren't actually present if the p is not discounted
-		// so we check if the shield/discount values are equal to their respective empty structs
-		hasShield := p.Shield != shield{}
-		hasDiscount := p.Discount != discount{}
-
-		if hasShield && hasDiscount {
+		hasDiscount := response.Product.Price.Discount.SegmentId != 0
+		if hasDiscount {
 			productsInBonus = append(productsInBonus, productToCheck{
 				FriendlyName: product.FriendlyName,
 				ApiName:      product.ApiName,
-				BonusData: bonusData{
-					Shield: shield{
-						Text: p.Shield.Text,
-					},
-					Discount: discount{
-						Start: p.Discount.Start,
-						End:   p.Discount.End,
-					},
-				},
+				BonusData:    response,
 			})
 		} else {
 			productsNotInBonus = append(productsNotInBonus, productToCheck{
@@ -181,7 +136,7 @@ func goThomasGo(thomas *discordgo.Session, products []productToCheck) {
 		for _, prod := range productsInBonus {
 			inBonusFields = append(inBonusFields, &discordgo.MessageEmbedField{
 				Name:  fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
-				Value: fmt.Sprintf("%s; starts: %s, ends: %s", prod.BonusData.Shield.Text, prod.BonusData.Discount.Start, prod.BonusData.Discount.End),
+				Value: fmt.Sprintf("%s", prod.BonusData.Product.Price.Discount.Description),
 			})
 		}
 	}
