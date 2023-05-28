@@ -2,9 +2,10 @@ package main
 
 type GQLQuery struct {
 	Product struct {
-		Id    int
-		Title string
-		Price struct {
+		Id         int
+		Title      string
+		SmartLabel string
+		Price      struct {
 			Now struct {
 				Amount float64
 			}

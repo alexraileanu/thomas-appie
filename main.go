@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-co-op/gocron"
 	"github.com/hasura/go-graphql-client"
 )
 
@@ -27,20 +27,23 @@ type productToCheck struct {
 const AppieURL = "https://www.ah.nl/gql"
 
 func main() {
-	thomas := initThomas()
-
-	//s := gocron.NewScheduler(time.Local)
-
-	// scheduler that runs every day at 10AM (for now for debug purposes only)
-	// eventually it will run every monday
-	//s.Every(1).Week().Monday().At("10:30").Do(func() {
-	productsToWatch, err := parseProductsJson()
+	thomas, err := initThomas()
 	if err != nil {
 		panic(err)
 	}
-	goThomasGo(nil, productsToWatch)
-	//})
-	//s.StartBlocking()
+
+	s := gocron.NewScheduler(time.Local)
+
+	// scheduler that runs every day at 10AM (for now for debug purposes only)
+	// eventually it will run every monday
+	s.Every(1).Week().Monday().At("10:30").Do(func() {
+		productsToWatch, err := parseProductsJson()
+		if err != nil {
+			panic(err)
+		}
+		goThomasGo(thomas, productsToWatch)
+	})
+	s.StartBlocking()
 
 	handleClose(thomas)
 }
@@ -66,32 +69,18 @@ func checkProduct(product productToCheck) (GQLQuery, error) {
 }
 
 // initThomas makes the initial connection to discord
-func initThomas() *discordgo.Session {
+func initThomas() (*discordgo.Session, error) {
 	thomas, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	err = thomas.Open()
 	if err != nil {
-		fmt.Println("Error opening Discord session: ", err)
+		return nil, err
 	}
 
-	return thomas
-}
-
-// parseBody parses the response body into the given target
-func parseBody(resp *http.Response, target any) error {
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	err = resp.Body.Close()
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(responseBody, target)
+	return thomas, nil
 }
 
 // handleClose cleanly disconnects and shuts thomas down
@@ -136,7 +125,7 @@ func goThomasGo(thomas *discordgo.Session, products []productToCheck) {
 		for _, prod := range productsInBonus {
 			inBonusFields = append(inBonusFields, &discordgo.MessageEmbedField{
 				Name:  fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
-				Value: fmt.Sprintf("%s", prod.BonusData.Product.Price.Discount.Description),
+				Value: fmt.Sprintf("%s %s", prod.BonusData.Product.Price.Discount.Description, prod.BonusData.Product.SmartLabel),
 			})
 		}
 	}
