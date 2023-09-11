@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +26,9 @@ type productToCheck struct {
 
 const AppieURL = "https://www.ah.nl/gql"
 
+//go:embed queryFormat.json
+var queryFormatFile embed.FS
+
 func main() {
 	godotenv.Load()
 	thomas, err := initThomas()
@@ -48,7 +52,7 @@ func main() {
 }
 
 func readQueryFile() (string, error) {
-	data, err := os.ReadFile("queryFormat.json")
+	data, err := queryFormatFile.ReadFile("queryFormat.json")
 	if err != nil {
 		return "", err
 	}
