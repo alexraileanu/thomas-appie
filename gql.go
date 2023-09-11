@@ -1,31 +1,29 @@
 package main
 
-type GQLQuery struct {
-	Product struct {
-		Id         int
-		Title      string
-		SmartLabel string
-		Price      struct {
-			Now struct {
-				Amount float64
-			}
-			Was struct {
-				Amount float64
-			}
-			UnitInfo struct {
-				Price struct {
+type productInfoResponse struct {
+	Data struct {
+		Product struct {
+			Id         int    `json:"id"`
+			Title      string `json:"title"`
+			SmartLabel string `json:"smartLabel"`
+			Price      struct {
+				Now struct {
+					Amount float64 `json:"amount"`
+				} `json:"now"`
+				Was struct {
 					Amount float64
-				}
-				Description string
+				} `json:"was"`
+				UnitInfo struct {
+					Price struct {
+						Amount float64 `json:"amount"`
+					} `json:"price"`
+					Description string `json:"description"`
+				} `json:"unitInfo"`
+				Discount struct {
+					SegmentId   int    `json:"segmentId"`
+					Description string `json:"description"`
+				} `json:"discount"`
 			}
-			Discount struct {
-				SegmentId   int
-				Description string
-			}
-		}
-	} `graphql:"product(id: $id, date: $date)"`
-}
-
-type Query struct {
-	Query GQLQuery `graphql:"product($id: Int!, $date: String)"`
+		} `json:"product"`
+	} `json:"data"`
 }

@@ -1,0 +1,1 @@
+{"operationName": "product", "variables": {"id": %d, "date": "%s"}, "query": "query product($id: Int!, $date: String) { product(id: $id, date: $date) { id title smartLabel price { now { amount __typename } was { amount __typename } unitInfo { price { amount __typename } description __typename } discount { segmentId description __typename } __typename __typename } __typename } }"}
