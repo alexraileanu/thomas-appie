@@ -1,6 +1,9 @@
 package main
 
 import (
+	"time"
+
+	"github.com/go-co-op/gocron"
 	"github.com/joho/godotenv"
 
 	"github.com/alexraileanu/thomas-appie/pkg/db"
@@ -14,26 +17,25 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//s := gocron.NewScheduler(time.Local)
+	s := gocron.NewScheduler(time.Local)
 	dbConnection, err := db.New()
 	if err != nil {
 		panic(err)
 	}
 
 	// scheduler that runs every monday at 10AM
-	//s.Every(1).Week().Monday().At("10:30").Do(func() {
-	productsToWatch, err := utl.ParseProductsJson()
-	if err != nil {
-		panic(err)
-	}
-	//goThomasGo(thomas, productsToWatch)
-	t.Go(productsToWatch)
-	err = dbConnection.Save(productsToWatch)
-	if err != nil {
-		panic(err)
-	}
-	//})
-	//s.StartBlocking()
+	s.Every(1).Week().Monday().At("10:30").Do(func() {
+		productsToWatch, err := utl.ParseProductsJson()
+		if err != nil {
+			panic(err)
+		}
+		t.Go(productsToWatch)
+		err = dbConnection.Save(productsToWatch)
+		if err != nil {
+			panic(err)
+		}
+	})
+	s.StartBlocking()
 
 	t.Close()
 }
