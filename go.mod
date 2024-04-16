@@ -7,6 +7,7 @@ require (
 	github.com/go-co-op/gocron v1.18.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mattn/go-sqlite3 v1.14.22
 )
 
 require (

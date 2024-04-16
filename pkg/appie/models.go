@@ -1,6 +1,16 @@
-package main
+package appie
 
-type productInfoResponse struct {
+type ProductToCheck struct {
+	ID           int
+	ApiName      string
+	FriendlyName string
+	RefererUrl   string
+	HasDiscount  bool
+
+	BonusData ProductInfoResponse
+}
+
+type ProductInfoResponse struct {
 	Data struct {
 		Product struct {
 			Id         int    `json:"id"`

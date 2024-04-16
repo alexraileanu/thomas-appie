@@ -1,0 +1,80 @@
+package thomas
+
+import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/bwmarrin/discordgo"
+
+	"github.com/alexraileanu/thomas-appie/pkg/appie"
+)
+
+type Thomas struct {
+	session *discordgo.Session
+}
+
+func New() (*Thomas, error) {
+	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
+	if err != nil {
+		return nil, err
+	}
+
+	err = session.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Thomas{session: session}, nil
+}
+
+func (t *Thomas) Go(productsToWatch []*appie.ProductToCheck) {
+	productsInBonus, productsNotInBonus, err := appie.PerformProductsCheck(productsToWatch)
+	if err != nil {
+		panic(err)
+	}
+	var inBonusFields []*discordgo.MessageEmbedField
+	if len(productsInBonus) != 0 {
+		for _, prod := range productsInBonus {
+			inBonusFields = append(inBonusFields, &discordgo.MessageEmbedField{
+				Name:  fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
+				Value: fmt.Sprintf("%s %s", prod.BonusData.Data.Product.Price.Discount.Description, prod.BonusData.Data.Product.SmartLabel),
+			})
+		}
+	}
+
+	var notInBonusFields []*discordgo.MessageEmbedField
+	if len(productsNotInBonus) != 0 {
+		for _, prod := range productsNotInBonus {
+			notInBonusFields = append(notInBonusFields, &discordgo.MessageEmbedField{
+				Name: fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
+			})
+		}
+	}
+
+	embeds := []*discordgo.MessageEmbed{
+		{
+			Color:  0xff7900,
+			Title:  "Products that are in bonus this week at the Appie",
+			Fields: inBonusFields,
+		},
+		{
+			Title:  "Products that aren't in bonus this week at the Appie",
+			Color:  0xff0000,
+			Fields: notInBonusFields,
+		},
+	}
+	t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
+}
+
+func (t *Thomas) Close() {
+	// Wait here until CTRL-C or other term signal is received.
+	fmt.Println("Thomas is now running.  Press CTRL-C to exit.")
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-sc
+
+	// Cleanly close down the Thomas session.
+	t.session.Close()
+}
