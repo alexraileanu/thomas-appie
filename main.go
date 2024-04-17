@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/alexraileanu/thomas-appie/pkg/db"
+	"github.com/alexraileanu/thomas-appie/pkg/http"
 	"github.com/alexraileanu/thomas-appie/pkg/thomas"
 	"github.com/alexraileanu/thomas-appie/pkg/utl"
 )
@@ -22,7 +23,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	// scheduler that runs every monday at 10AM
 	s.Every(1).Week().Monday().At("10:30").Do(func() {
 		productsToWatch, err := utl.ParseProductsJson()
@@ -35,7 +35,13 @@ func main() {
 			panic(err)
 		}
 	})
-	s.StartBlocking()
+	s.StartAsync()
+
+	dbService := db.NewDBService(dbConnection)
+	go func() {
+		h := http.NewServer(dbService)
+		h.Start()
+	}()
 
 	t.Close()
 }

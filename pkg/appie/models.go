@@ -1,13 +1,13 @@
 package appie
 
 type ProductToCheck struct {
-	ID           int
-	ApiName      string
-	FriendlyName string
-	RefererUrl   string
-	HasDiscount  bool
+	ID           int    `json:"-"`
+	ApiName      string `json:"apiName"`
+	FriendlyName string `json:"friendlyName"`
+	RefererUrl   string `json:"-"`
+	InBonus      bool   `json:"inBonus"`
 
-	BonusData ProductInfoResponse
+	BonusData ProductInfoResponse `json:"-"`
 }
 
 type ProductInfoResponse struct {

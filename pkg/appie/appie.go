@@ -24,7 +24,7 @@ func PerformProductsCheck(productsToWatch []*ProductToCheck) ([]ProductToCheck, 
 			return nil, nil, err
 		}
 		hasDiscount := product.BonusData.Data.Product.Price.Discount.SegmentId != 0
-		product.HasDiscount = hasDiscount
+		product.InBonus = hasDiscount
 		if hasDiscount {
 			productsInBonus = append(productsInBonus, ProductToCheck{
 				FriendlyName: product.FriendlyName,
