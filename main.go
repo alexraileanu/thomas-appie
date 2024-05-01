@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -14,12 +15,14 @@ import (
 
 func main() {
 	godotenv.Load()
-	t, err := thomas.New()
+
+	s := gocron.NewScheduler(time.Local)
+	dbConnection, err := db.New(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
 	if err != nil {
 		panic(err)
 	}
-	s := gocron.NewScheduler(time.Local)
-	dbConnection, err := db.New()
+	dbService := db.NewDBService(dbConnection)
+	t, err := thomas.New(dbService)
 	if err != nil {
 		panic(err)
 	}
@@ -29,15 +32,14 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		t.Go(productsToWatch)
-		err = dbConnection.Save(productsToWatch)
+		t.Go()
+		err = dbService.SaveProduct(productsToWatch)
 		if err != nil {
 			panic(err)
 		}
 	})
 	s.StartAsync()
 
-	dbService := db.NewDBService(dbConnection)
 	go func() {
 		h := http.NewServer(dbService)
 		h.Start()

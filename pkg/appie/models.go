@@ -1,13 +1,33 @@
 package appie
 
-type ProductToCheck struct {
-	ID           int    `json:"-"`
-	ApiName      string `json:"apiName"`
-	FriendlyName string `json:"friendlyName"`
-	RefererUrl   string `json:"-"`
-	InBonus      bool   `json:"inBonus"`
+import (
+	"time"
+)
 
-	BonusData ProductInfoResponse `json:"-"`
+type Product struct {
+	ID uint `gorm:"primarykey" json:"id"`
+
+	ApiName      string `json:"api_name"`
+	FriendlyName string `json:"friendly_name"`
+	RefererUrl   string `json:"referer_url"`
+	AppieId      int    `json:"appie_id"`
+
+	DiscountedProducts []DiscountedProducts `json:"-"`
+	Discount           DiscountedProducts   `json:"discount" gorm:"-"`
+
+	CreatedAt time.Time `gorm:"column:created_at" json:"-"`
+}
+
+type DiscountedProducts struct {
+	ID uint `gorm:"primarykey" json:"-"`
+
+	ProductID   uint     `json:"-"`
+	InBonus     bool     `json:"in_bonus"`
+	Description string   `json:"description"`
+	Label       string   `json:"label"`
+	Product     *Product `json:"-"`
+
+	CreatedAt time.Time `gorm:"column:created_at" json:"-"`
 }
 
 type ProductInfoResponse struct {

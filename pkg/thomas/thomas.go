@@ -9,13 +9,15 @@ import (
 	"github.com/bwmarrin/discordgo"
 
 	"github.com/alexraileanu/thomas-appie/pkg/appie"
+	"github.com/alexraileanu/thomas-appie/pkg/db"
 )
 
 type Thomas struct {
-	session *discordgo.Session
+	session   *discordgo.Session
+	dbService *db.Service
 }
 
-func New() (*Thomas, error) {
+func New(dbService *db.Service) (*Thomas, error) {
 	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
 		return nil, err
@@ -26,11 +28,16 @@ func New() (*Thomas, error) {
 		return nil, err
 	}
 
-	return &Thomas{session: session}, nil
+	return &Thomas{session: session, dbService: dbService}, nil
 }
 
-func (t *Thomas) Go(productsToWatch []*appie.ProductToCheck) {
-	productsInBonus, productsNotInBonus, err := appie.PerformProductsCheck(productsToWatch)
+func (t *Thomas) Go() {
+	products, err := t.dbService.GetProducts()
+	if err != nil {
+		panic(err)
+	}
+
+	productsInBonus, productsNotInBonus, err := appie.PerformProductsCheck(products)
 	if err != nil {
 		panic(err)
 	}
@@ -39,10 +46,11 @@ func (t *Thomas) Go(productsToWatch []*appie.ProductToCheck) {
 		for _, prod := range productsInBonus {
 			inBonusFields = append(inBonusFields, &discordgo.MessageEmbedField{
 				Name:  fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
-				Value: fmt.Sprintf("%s %s", prod.BonusData.Data.Product.Price.Discount.Description, prod.BonusData.Data.Product.SmartLabel),
+				Value: fmt.Sprintf("%s %s", prod.DiscountedProducts[0].Description, prod.DiscountedProducts[0].Label),
 			})
 		}
 	}
+	_ = t.dbService.SaveDiscountedProducts(append(productsInBonus, productsNotInBonus...))
 
 	var notInBonusFields []*discordgo.MessageEmbedField
 	if len(productsNotInBonus) != 0 {

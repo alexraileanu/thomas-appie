@@ -14,41 +14,43 @@ const URL = "https://www.ah.nl/gql"
 //go:embed queryFormat.json
 var queryFormatFile embed.FS
 
-func PerformProductsCheck(productsToWatch []*ProductToCheck) ([]ProductToCheck, []ProductToCheck, error) {
-	var productsInBonus []ProductToCheck
-	var productsNotInBonus []ProductToCheck
+func PerformProductsCheck(productsToWatch []Product) ([]Product, []Product, error) {
+	var productsInBonus []Product
+	var productsNotInBonus []Product
 
 	for _, product := range productsToWatch {
-		err := makeGqlRequest(product)
+		bonusInfo, err := makeGqlRequest(product)
 		if err != nil {
 			return nil, nil, err
 		}
-		hasDiscount := product.BonusData.Data.Product.Price.Discount.SegmentId != 0
-		product.InBonus = hasDiscount
+		hasDiscount := bonusInfo.Data.Product.Price.Discount.SegmentId != 0
+		productBonusInfo := DiscountedProducts{
+			ProductID:   product.ID,
+			InBonus:     hasDiscount,
+			Description: bonusInfo.Data.Product.Price.Discount.Description,
+			Label:       bonusInfo.Data.Product.SmartLabel,
+		}
+
+		productBonusInfo.InBonus = hasDiscount
+		product.DiscountedProducts = append(product.DiscountedProducts, productBonusInfo)
+
 		if hasDiscount {
-			productsInBonus = append(productsInBonus, ProductToCheck{
-				FriendlyName: product.FriendlyName,
-				ApiName:      product.ApiName,
-				BonusData:    product.BonusData,
-			})
+			productsInBonus = append(productsInBonus, product)
 		} else {
-			productsNotInBonus = append(productsNotInBonus, ProductToCheck{
-				FriendlyName: product.FriendlyName,
-				ApiName:      product.ApiName,
-			})
+			productsNotInBonus = append(productsNotInBonus, product)
 		}
 	}
 
 	return productsInBonus, productsNotInBonus, nil
 }
 
-func makeGqlRequest(product *ProductToCheck) error {
+func makeGqlRequest(product Product) (ProductInfoResponse, error) {
 	gqlQuery, err := readQueryFile()
 	if err != nil {
-		return err
+		return ProductInfoResponse{}, err
 	}
 
-	preparedRequest := fmt.Sprintf(gqlQuery, product.ID, time.Now().Format("2006-01-02"))
+	preparedRequest := fmt.Sprintf(gqlQuery, product.AppieId, time.Now().Format("2006-01-02"))
 
 	client := resty.New()
 	r := client.R()
@@ -62,10 +64,17 @@ func makeGqlRequest(product *ProductToCheck) error {
 
 	resp, err := r.SetBody(preparedRequest).Post(URL)
 	if err != nil {
-		return err
+		return ProductInfoResponse{}, err
 	}
 
-	return json.Unmarshal(resp.Body(), &product.BonusData)
+	productInfo := new(ProductInfoResponse)
+	err = json.Unmarshal(resp.Body(), productInfo)
+	if err != nil {
+		return ProductInfoResponse{}, err
+
+	}
+
+	return *productInfo, nil
 }
 
 func readQueryFile() (string, error) {

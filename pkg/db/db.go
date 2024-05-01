@@ -1,22 +1,26 @@
 package db
 
 import (
-	"database/sql"
+	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
+	"github.com/alexraileanu/thomas-appie/pkg/appie"
 )
 
 type DB struct {
-	handler *sql.DB
+	handler *gorm.DB
 }
 
-func New() (*DB, error) {
-	handler, err := sql.Open("sqlite3", "./data/thomas.db?cache=shared")
+func New(user string, password string, host string, dbName string) (*DB, error) {
+	dbDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True", user, password, host, dbName)
+	handler, err := gorm.Open(mysql.Open(dbDsn))
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = handler.Exec("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, api_name TEXT, friendly_name TEXT, in_bonus TINYINT)")
+	err = handler.AutoMigrate(&appie.Product{}, &appie.DiscountedProducts{})
 	if err != nil {
 		return nil, err
 	}
