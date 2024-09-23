@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -14,12 +15,21 @@ const URL = "https://www.ah.nl/gql"
 //go:embed queryFormat.json
 var queryFormatFile embed.FS
 
-func PerformProductsCheck(productsToWatch []Product) ([]Product, []Product, error) {
+type Appie struct {
+	loggerService *logger.Service
+}
+
+func New(loggerService *logger.Service) *Appie {
+	return &Appie{loggerService: loggerService}
+}
+
+func (a *Appie) PerformProductsCheck(productsToWatch []Product) ([]Product, []Product, error) {
 	var productsInBonus []Product
 	var productsNotInBonus []Product
 
 	for _, product := range productsToWatch {
-		bonusInfo, err := makeGqlRequest(product)
+		a.loggerService.Info(fmt.Sprintf("Checking product %s", product.FriendlyName), nil)
+		bonusInfo, err := a.makeGqlRequest(product)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -44,9 +54,10 @@ func PerformProductsCheck(productsToWatch []Product) ([]Product, []Product, erro
 	return productsInBonus, productsNotInBonus, nil
 }
 
-func makeGqlRequest(product Product) (ProductInfoResponse, error) {
-	gqlQuery, err := readQueryFile()
+func (a *Appie) makeGqlRequest(product Product) (ProductInfoResponse, error) {
+	gqlQuery, err := a.readQueryFile()
 	if err != nil {
+		a.loggerService.Error("Error reading query file", map[string]interface{}{"error": err.Error()})
 		return ProductInfoResponse{}, err
 	}
 
@@ -64,12 +75,14 @@ func makeGqlRequest(product Product) (ProductInfoResponse, error) {
 
 	resp, err := r.SetBody(preparedRequest).Post(URL)
 	if err != nil {
+		a.loggerService.Error("Error making request to Appie", map[string]interface{}{"error": err.Error()})
 		return ProductInfoResponse{}, err
 	}
 
 	productInfo := new(ProductInfoResponse)
 	err = json.Unmarshal(resp.Body(), productInfo)
 	if err != nil {
+		a.loggerService.Error("Error unmarshalling response from Appie", map[string]interface{}{"error": err.Error()})
 		return ProductInfoResponse{}, err
 
 	}
@@ -77,7 +90,7 @@ func makeGqlRequest(product Product) (ProductInfoResponse, error) {
 	return *productInfo, nil
 }
 
-func readQueryFile() (string, error) {
+func (a *Appie) readQueryFile() (string, error) {
 	data, err := queryFormatFile.ReadFile("queryFormat.json")
 	if err != nil {
 		return "", err

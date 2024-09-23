@@ -2,6 +2,7 @@ package thomas
 
 import (
 	"fmt"
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,11 +14,12 @@ import (
 )
 
 type Thomas struct {
-	session   *discordgo.Session
-	dbService *db.Service
+	session       *discordgo.Session
+	dbService     *db.Service
+	loggerService *logger.Service
 }
 
-func New(dbService *db.Service) (*Thomas, error) {
+func New(dbService *db.Service, loggerService *logger.Service) (*Thomas, error) {
 	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
 		return nil, err
@@ -28,16 +30,21 @@ func New(dbService *db.Service) (*Thomas, error) {
 		return nil, err
 	}
 
-	return &Thomas{session: session, dbService: dbService}, nil
+	return &Thomas{session: session, dbService: dbService, loggerService: loggerService}, nil
 }
 
 func (t *Thomas) Go() {
+	t.loggerService.Info("Fetching products from the db", nil)
 	products, err := t.dbService.GetProducts()
 	if err != nil {
+		t.loggerService.Error("Error fetching products from the db", map[string]interface{}{"error": err.Error()})
 		panic(err)
 	}
 
-	productsInBonus, productsNotInBonus, err := appie.PerformProductsCheck(products)
+	a := appie.New(t.loggerService)
+
+	t.loggerService.Info("Checking products from the Appie", nil)
+	productsInBonus, productsNotInBonus, err := a.PerformProductsCheck(products)
 	if err != nil {
 		panic(err)
 	}
@@ -61,6 +68,7 @@ func (t *Thomas) Go() {
 		}
 	}
 
+	t.loggerService.Info("Sending message to Discord", nil)
 	embeds := []*discordgo.MessageEmbed{
 		{
 			Color:  0xff7900,
@@ -73,7 +81,11 @@ func (t *Thomas) Go() {
 			Fields: notInBonusFields,
 		},
 	}
-	t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
+	_, err = t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
+	if err != nil {
+		t.loggerService.Error("Error sending message", map[string]interface{}{"error": err.Error()})
+		return
+	}
 }
 
 func (t *Thomas) Close() {

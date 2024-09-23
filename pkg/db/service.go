@@ -2,23 +2,26 @@ package db
 
 import (
 	"fmt"
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"time"
 
 	"github.com/alexraileanu/thomas-appie/pkg/appie"
 )
 
 type Service struct {
-	db *DB
+	db            *DB
+	loggerService *logger.Service
 }
 
-func NewDBService(db *DB) *Service {
-	return &Service{db: db}
+func NewDBService(db *DB, loggerService *logger.Service) *Service {
+	return &Service{db: db, loggerService: loggerService}
 }
 
 func (s *Service) GetProducts() ([]appie.Product, error) {
 	var products []appie.Product
 	result := s.db.handler.Table("products").Find(&products)
 	if result.Error != nil {
+		s.loggerService.Error("Error fetching products from the db", map[string]interface{}{"error": result.Error.Error()})
 		return nil, result.Error
 	}
 
@@ -57,6 +60,7 @@ func (s *Service) SaveProduct(products []appie.Product) error {
 	for _, product := range products {
 		result := s.db.handler.Where(appie.Product{AppieId: product.AppieId}).FirstOrCreate(&product)
 		if result.Error != nil {
+			s.loggerService.Error("Error saving product", map[string]interface{}{"error": result.Error.Error()})
 			return result.Error
 		}
 	}

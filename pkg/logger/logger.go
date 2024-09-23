@@ -1,0 +1,74 @@
+package logger
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+type Service struct {
+}
+
+type Log struct {
+	Message string                 `json:"message"`
+	Level   string                 `json:"level"`
+	Extra   map[string]interface{} `json:"extra"`
+}
+
+func New() *Service {
+	return &Service{}
+}
+
+func (s *Service) Info(message string, extra map[string]interface{}) {
+	log := Log{
+		Message: message,
+		Level:   "INFO",
+		Extra:   extra,
+	}
+
+	s.send(log)
+}
+
+func (s *Service) Error(message string, error map[string]interface{}) {
+	log := Log{
+		Message: message,
+		Level:   "ERROR",
+		Extra:   error,
+	}
+
+	s.send(log)
+}
+
+func (s *Service) send(log Log) {
+	body, err := json.Marshal(log)
+	if err != nil {
+		fmt.Printf("Error marshalling log: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", os.Getenv("LOGS_HOST"), bytes.NewBuffer(body))
+	if err != nil {
+		fmt.Printf("Error creating request: %v", err)
+		return
+	}
+
+	req.SetBasicAuth(os.Getenv("LOGS_USER"), os.Getenv("LOGS_PASSWORD"))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Printf("Error sending log: %v", err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Error sending log: %v", resp.Status)
+		return
+	}
+}
