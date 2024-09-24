@@ -1,0 +1,7 @@
+[thomas]
+cron = "30 10 * * MON"
+
+[appie]
+client_name = "abc"
+client_version = "def"
+user_agent = "ghi"

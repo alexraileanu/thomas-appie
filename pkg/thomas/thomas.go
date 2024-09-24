@@ -2,6 +2,7 @@ package thomas
 
 import (
 	"fmt"
+	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"os"
 	"os/signal"
@@ -17,9 +18,11 @@ type Thomas struct {
 	session       *discordgo.Session
 	dbService     *db.Service
 	loggerService *logger.Service
+
+	config config.Config
 }
 
-func New(dbService *db.Service, loggerService *logger.Service) (*Thomas, error) {
+func New(dbService *db.Service, loggerService *logger.Service, config config.Config) (*Thomas, error) {
 	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
 		return nil, err
@@ -30,7 +33,7 @@ func New(dbService *db.Service, loggerService *logger.Service) (*Thomas, error) 
 		return nil, err
 	}
 
-	return &Thomas{session: session, dbService: dbService, loggerService: loggerService}, nil
+	return &Thomas{session: session, dbService: dbService, loggerService: loggerService, config: config}, nil
 }
 
 func (t *Thomas) Go() {
@@ -41,7 +44,7 @@ func (t *Thomas) Go() {
 		panic(err)
 	}
 
-	a := appie.New(t.loggerService)
+	a := appie.New(t.loggerService, t.config.Appie)
 
 	t.loggerService.Info("Checking products from the Appie", nil)
 	productsInBonus, productsNotInBonus, err := a.PerformProductsCheck(products)
@@ -69,23 +72,57 @@ func (t *Thomas) Go() {
 	}
 
 	t.loggerService.Info("Sending message to Discord", nil)
-	embeds := []*discordgo.MessageEmbed{
-		{
-			Color:  0xff7900,
-			Title:  "Products that are in bonus this week at the Appie",
-			Fields: inBonusFields,
-		},
-		{
-			Title:  "Products that aren't in bonus this week at the Appie",
-			Color:  0xff0000,
-			Fields: notInBonusFields,
-		},
-	}
+
+	inBonus := t.fixFieldsForDiscord(inBonusFields)
+	notInBonus := t.fixFieldsForDiscord(notInBonusFields)
+
+	var embeds []*discordgo.MessageEmbed
+	embeds = append(embeds, t.fixEmbedsForDiscord(inBonus, "Products that are in bonus this week at the Appie", 0xff7900)...)
+	embeds = append(embeds, t.fixEmbedsForDiscord(notInBonus, "Products that aren't in bonus this week at the Appie", 0xff0000)...)
+
 	_, err = t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
 	if err != nil {
 		t.loggerService.Error("Error sending message", map[string]interface{}{"error": err.Error()})
 		return
 	}
+}
+
+func (t *Thomas) fixFieldsForDiscord(fields []*discordgo.MessageEmbedField) [][]*discordgo.MessageEmbedField {
+	var fixedFields [][]*discordgo.MessageEmbedField
+	if len(fields) > 25 {
+		for i := 0; i < len(fields); i += 25 {
+			end := i + 25
+			if end > len(fields) {
+				end = len(fields)
+			}
+			fixedFields = append(fixedFields, fields[i:end])
+		}
+	} else {
+		fixedFields = append(fixedFields, fields)
+	}
+
+	return fixedFields
+}
+
+func (t *Thomas) fixEmbedsForDiscord(embeds [][]*discordgo.MessageEmbedField, title string, color int) []*discordgo.MessageEmbed {
+	var fixedEmbeds []*discordgo.MessageEmbed
+	if len(embeds) > 1 {
+		for _, bonus := range embeds {
+			fixedEmbeds = append(fixedEmbeds, &discordgo.MessageEmbed{
+				Color:  color,
+				Title:  title,
+				Fields: bonus,
+			})
+		}
+	} else {
+		fixedEmbeds = append(fixedEmbeds, &discordgo.MessageEmbed{
+			Color:  color,
+			Title:  title,
+			Fields: embeds[0],
+		})
+	}
+
+	return fixedEmbeds
 }
 
 func (t *Thomas) Close() {

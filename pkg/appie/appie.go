@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"time"
 
@@ -17,10 +18,11 @@ var queryFormatFile embed.FS
 
 type Appie struct {
 	loggerService *logger.Service
+	config        config.Appie
 }
 
-func New(loggerService *logger.Service) *Appie {
-	return &Appie{loggerService: loggerService}
+func New(loggerService *logger.Service, config config.Appie) *Appie {
+	return &Appie{loggerService: loggerService, config: config}
 }
 
 func (a *Appie) PerformProductsCheck(productsToWatch []Product) ([]Product, []Product, error) {
@@ -67,15 +69,15 @@ func (a *Appie) makeGqlRequest(product Product) (ProductInfoResponse, error) {
 	r := client.R()
 
 	// we pretend we're a valid browser request
-	r.Header.Add("client-name", "ah-products")
-	r.Header.Add("client-version", "6.500.0")
+	r.Header.Add("client-name", a.config.ClientName)
+	r.Header.Add("client-version", a.config.ClientVersion)
+	r.Header.Add("User-Agent", a.config.UserAgent)
 	r.Header.Add("Referer", product.RefererUrl)
-	r.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/117.0")
 	r.Header.Add("Content-Type", "application/json")
 
 	resp, err := r.SetBody(preparedRequest).Post(URL)
 	if err != nil {
-		a.loggerService.Error("Error making request to Appie", map[string]interface{}{"error": err.Error()})
+		a.loggerService.Error("Error making request to Appie", map[string]interface{}{"error": err.Error(), "body": string(resp.Body())})
 		return ProductInfoResponse{}, err
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"os"
 	"time"
@@ -19,6 +20,13 @@ func main() {
 
 	loggerService := logger.New()
 
+	conf := config.New()
+	err := conf.ParseConfig()
+	if err != nil {
+		loggerService.Error("Error parsing config", map[string]interface{}{"error": err.Error()})
+		panic(err)
+	}
+
 	loggerService.Info("Starting thomas", nil)
 	s := gocron.NewScheduler(time.Local)
 
@@ -30,12 +38,13 @@ func main() {
 	}
 	dbService := db.NewDBService(dbConnection, loggerService)
 
-	t, err := thomas.New(dbService, loggerService)
+	t, err := thomas.New(dbService, loggerService, conf)
 	if err != nil {
 		panic(err)
 	}
-	// scheduler that runs every monday at 10AM
-	s.Every(1).Week().Monday().At("10:30").Do(func() {
+
+	loggerService.Info("Starting cron job", map[string]interface{}{"cron": conf.Thomas.Cron})
+	s.Cron(conf.Thomas.Cron).Do(func() {
 		loggerService.Info("Fetching products from the Appie", nil)
 		productsToWatch, err := utl.ParseProductsJson()
 		if err != nil {

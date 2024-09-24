@@ -3,3 +3,5 @@
 products.json
 data/thomas.db
 !data/.gitkeep
+thomas
+config.toml
