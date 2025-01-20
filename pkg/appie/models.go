@@ -33,10 +33,9 @@ type DiscountedProducts struct {
 type ProductInfoResponse struct {
 	Data struct {
 		Product struct {
-			Id         int    `json:"id"`
-			Title      string `json:"title"`
-			SmartLabel string `json:"smartLabel"`
-			Price      struct {
+			Id    int    `json:"id"`
+			Title string `json:"title"`
+			Price struct {
 				Now struct {
 					Amount float64 `json:"amount"`
 				} `json:"now"`

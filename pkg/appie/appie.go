@@ -4,9 +4,10 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -40,7 +41,7 @@ func (a *Appie) PerformProductsCheck(productsToWatch []Product) ([]Product, []Pr
 			ProductID:   product.ID,
 			InBonus:     hasDiscount,
 			Description: bonusInfo.Data.Product.Price.Discount.Description,
-			Label:       bonusInfo.Data.Product.SmartLabel,
+			Label:       bonusInfo.Data.Product.Title,
 		}
 
 		productBonusInfo.InBonus = hasDiscount
