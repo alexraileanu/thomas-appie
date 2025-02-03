@@ -7,9 +7,10 @@ type Thomas struct {
 }
 
 type Appie struct {
-	ClientName    string `toml:"client_name"`
-	ClientVersion string `toml:"client_version"`
-	UserAgent     string `toml:"user_agent"`
+	ClientName         string `toml:"client_name"`
+	ClientVersion      string `toml:"client_version"`
+	UserAgent          string `toml:"user_agent"`
+	ClientPlatformType string `toml:"client_platform_type"`
 }
 
 type Config struct {

@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/alexraileanu/thomas-appie/pkg/config"
-	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"os"
 	"time"
+
+	"github.com/alexraileanu/thomas-appie/pkg/config"
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 
 	"github.com/go-co-op/gocron"
 	"github.com/joho/godotenv"
@@ -31,7 +32,7 @@ func main() {
 	s := gocron.NewScheduler(time.Local)
 
 	loggerService.Info("Connecting to the db", nil)
-	dbConnection, err := db.New(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
+	dbConnection, err := db.New(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
 	if err != nil {
 		loggerService.Error("Error connecting to the db", map[string]interface{}{"error": err.Error()})
 		panic(err)

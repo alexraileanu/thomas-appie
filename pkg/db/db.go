@@ -13,8 +13,8 @@ type DB struct {
 	handler *gorm.DB
 }
 
-func New(user string, password string, host string, dbName string) (*DB, error) {
-	dbDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True", user, password, host, dbName)
+func New(user string, password string, host string, port string, dbName string) (*DB, error) {
+	dbDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True", user, password, host, port, dbName)
 	handler, err := gorm.Open(mysql.Open(dbDsn))
 	if err != nil {
 		return nil, err

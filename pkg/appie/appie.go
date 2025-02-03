@@ -72,13 +72,21 @@ func (a *Appie) makeGqlRequest(product Product) (ProductInfoResponse, error) {
 	// we pretend we're a valid browser request
 	r.Header.Add("client-name", a.config.ClientName)
 	r.Header.Add("client-version", a.config.ClientVersion)
+	r.Header.Add("x-client-platform-type", a.config.ClientPlatformType)
 	r.Header.Add("User-Agent", a.config.UserAgent)
 	r.Header.Add("Referer", product.RefererUrl)
 	r.Header.Add("Content-Type", "application/json")
 
+	a.loggerService.Info("Making request to Appie", map[string]interface{}{"request": preparedRequest})
+
 	resp, err := r.SetBody(preparedRequest).Post(URL)
 	if err != nil {
-		a.loggerService.Error("Error making request to Appie", map[string]interface{}{"error": err.Error(), "body": string(resp.Body())})
+		a.loggerService.Error("Error making request to Appie", map[string]interface{}{"error": err.Error()})
+		return ProductInfoResponse{}, err
+	}
+
+	if resp.StatusCode() != 200 {
+		a.loggerService.Error("Got err response from Appie", map[string]interface{}{"response_headers": resp.Header(), "status_code": resp.Header()})
 		return ProductInfoResponse{}, err
 	}
 
