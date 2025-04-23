@@ -1,3 +1,3 @@
-FROM alpine:3.14
+FROM ubuntu:24.04
 COPY . /app
 CMD ["/bin/sh", "-c", "/app/thomas"]
