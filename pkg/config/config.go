@@ -1,6 +1,10 @@
 package config
 
-import "github.com/BurntSushi/toml"
+import (
+	"os"
+
+	"github.com/BurntSushi/toml"
+)
 
 type Thomas struct {
 	Cron string `toml:"cron"`
@@ -24,7 +28,7 @@ func New() Config {
 
 func (c *Config) ParseConfig() error {
 	var conf Config
-	if _, err := toml.DecodeFile("config.toml", &conf); err != nil {
+	if _, err := toml.DecodeFile(os.Getenv("CONFIG_FILE_PATH"), &conf); err != nil {
 		return err
 	}
 	c.Thomas = conf.Thomas
