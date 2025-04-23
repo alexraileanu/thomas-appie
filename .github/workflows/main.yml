@@ -17,7 +17,7 @@ jobs:
           go-version: 1.24
 
       - name: Build
-        run: make build-prod
+        run: make build-release
 
       - name: Login to DockerHub
         uses: docker/login-action@v1

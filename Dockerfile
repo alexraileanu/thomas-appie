@@ -1,13 +1,4 @@
-FROM golang:1.24 AS builder
-
+FROM alpine:3.14
+COPY . /app
 WORKDIR /app
-COPY . .
-
-RUN go mod download
-RUN go build -o app .
-
-FROM alpine:latest
-WORKDIR /app
-COPY --from=builder /app/app .
-
-CMD ["app"]
+CMD /app/thomas
