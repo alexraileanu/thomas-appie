@@ -2,8 +2,9 @@ package db
 
 import (
 	"fmt"
-	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"time"
+
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 
 	"github.com/alexraileanu/thomas-appie/pkg/appie"
 )
@@ -29,15 +30,19 @@ func (s *Service) GetProducts() ([]appie.Product, error) {
 }
 
 func (s *Service) GetDiscountedProductsThisWeek() ([]*appie.Product, error) {
-	// getMonday returns only the date but created_at contains the time as well.
-	// for this we can consider the start of the day
 	monday := fmt.Sprintf("%s 00:00:00.000", getMonday())
+	now := time.Now()
 
 	var products []*appie.Product
-	s.db.handler.Joins("JOIN discounted_products ON products.id = discounted_products.product_id").
-		Where("discounted_products.created_at > ?", monday).
-		Preload("DiscountedProducts").
+	result := s.db.handler.
+		Preload("DiscountedProducts", "created_at BETWEEN ? AND ?", monday, now).
+		Joins("JOIN discounted_products ON discounted_products.product_id = products.id").
+		Where("discounted_products.created_at BETWEEN ? AND ?", monday, now).
 		Find(&products)
+	if result.Error != nil {
+		s.loggerService.Error("Error fetching discounted products from the db", map[string]interface{}{"error": result.Error.Error()})
+		return nil, result.Error
+	}
 
 	for _, product := range products {
 		product.Discount = product.DiscountedProducts[0]
@@ -58,12 +63,28 @@ func (s *Service) SaveDiscountedProducts(products []appie.Product) error {
 
 func (s *Service) SaveProduct(products []appie.Product) error {
 	for _, product := range products {
-		result := s.db.handler.Where(appie.Product{AppieId: product.AppieId}).FirstOrCreate(&product)
+		var rows int64
+		result := s.db.handler.Table("products").Where(appie.Product{AppieId: product.AppieId}).Count(&rows)
 		if result.Error != nil {
-			s.loggerService.Error("Error saving product", map[string]interface{}{"error": result.Error.Error()})
+			s.loggerService.Error("Error saving product", map[string]interface{}{"error": result.Error})
 			return result.Error
 		}
+
+		if rows == 0 {
+			// If the product does not exist, create it
+			if err := s.db.handler.Create(&product).Error; err != nil {
+				s.loggerService.Error("Error creating product", map[string]interface{}{"error": err.Error()})
+				return err
+			}
+		} else {
+			// If the product exists, update it
+			if err := s.db.handler.Model(&appie.Product{}).Where("appie_id = ?", product.AppieId).Updates(product).Error; err != nil {
+				s.loggerService.Error("Error updating product", map[string]interface{}{"error": err.Error()})
+				return err
+			}
+		}
 	}
+	s.db.handler.Where("appie_id NOT IN (?)", pluckIds(products)).Debug().Delete(&appie.Product{})
 
 	return nil
 }
@@ -79,4 +100,12 @@ func getMonday() string {
 	}
 
 	return today.AddDate(0, 0, -daysToSubtract).Format("2006-01-02")
+}
+
+func pluckIds(products []appie.Product) []int {
+	ids := make([]int, len(products))
+	for i, product := range products {
+		ids[i] = product.AppieId
+	}
+	return ids
 }

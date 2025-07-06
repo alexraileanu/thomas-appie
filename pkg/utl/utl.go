@@ -21,3 +21,17 @@ func ParseProductsJson() ([]appie.Product, error) {
 
 	return *products, nil
 }
+
+func UpdateProductsJson(products []appie.Product) error {
+	fileContents, err := json.MarshalIndent(products, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(os.Getenv("PRODUCTS_JSON_FILE_PATH"), fileContents, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
