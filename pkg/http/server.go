@@ -13,6 +13,7 @@ import (
 
 	"github.com/alexraileanu/thomas-appie/pkg/db"
 	"github.com/alexraileanu/thomas-appie/pkg/product"
+	"github.com/alexraileanu/thomas-appie/web"
 )
 
 type Server struct {
@@ -62,4 +63,8 @@ func (s *Server) registerRoutes() {
 
 	apiGroup.GET("/db/products", s.getAllProducts)
 	apiGroup.POST("/db/products", s.updateProducts)
+
+	assetHandler := http.FileServer(web.Dist())
+	s.engine.GET("/", echo.WrapHandler(assetHandler))
+	s.engine.GET("/assets/*", echo.WrapHandler(assetHandler))
 }

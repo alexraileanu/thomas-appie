@@ -58,6 +58,8 @@ func main() {
 	//})
 	//s.StartAsync()
 
+	print("yo")
+
 	productService := product.New()
 
 	//go func() {
