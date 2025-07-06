@@ -14,6 +14,38 @@
       </div>
     </div>
 
+    <!-- Search Bar -->
+    <div class="relative">
+      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <svg class="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search products by name, friendly name, or ID..."
+        class="w-full pl-10 pr-4 py-3 border border-border bg-card text-card-foreground rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 shadow-sm hover:shadow-md hover:border-primary/50"
+      />
+      <div v-if="searchQuery" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+        <button @click="searchQuery = ''" class="text-muted-foreground hover:text-foreground transition-colors duration-200">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Results Summary -->
+    <div v-if="searchQuery && !loading" class="flex items-center justify-between text-sm text-muted-foreground bg-muted/30 px-4 py-2 rounded-lg">
+      <span>
+        {{ filteredProducts.length }} of {{ products.length }} product{{ filteredProducts.length !== 1 ? 's' : '' }} found
+      </span>
+      <button @click="searchQuery = ''" class="text-primary hover:text-primary/80 transition-colors duration-200">
+        Clear search
+      </button>
+    </div>
+
     <div v-if="loading" class="flex flex-col items-center justify-center py-12">
       <div class="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
       <p class="text-muted-foreground text-sm font-medium">Loading products...</p>
@@ -32,6 +64,14 @@
       <p class="text-muted-foreground text-sm">Click "Add Product" to get started</p>
     </div>
 
+    <div v-else-if="searchQuery && filteredProducts.length === 0" class="text-center py-12">
+      <div class="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+        <span class="text-2xl">🔍</span>
+      </div>
+      <p class="text-muted-foreground font-medium mb-2">No products found</p>
+      <p class="text-muted-foreground text-sm">Try adjusting your search terms</p>
+    </div>
+
     <!-- Single Products Display - CSS controls responsive layout -->
     <div v-else>
       <!-- Desktop Table View -->
@@ -48,7 +88,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr v-for="product in products" :key="product.appie_id" class="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors duration-150">
+            <tr v-for="product in filteredProducts" :key="product.appie_id" class="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors duration-150">
               <td class="p-3 font-mono text-sm text-card-foreground">{{ product.api_name }}</td>
               <td class="p-3 text-card-foreground">{{ product.friendly_name }}</td>
               <td class="p-3">
@@ -77,7 +117,7 @@
 
       <!-- Mobile Card View -->
       <div class="sm:hidden space-y-4">
-        <div v-for="product in products" :key="product.appie_id" class="border border-border rounded-lg p-4 bg-card shadow-sm hover:shadow-md hover:border-accent-foreground/20 transition-all duration-200 transform hover:scale-[1.02]">
+        <div v-for="product in filteredProducts" :key="product.appie_id" class="border border-border rounded-lg p-4 bg-card shadow-sm hover:shadow-md hover:border-accent-foreground/20 transition-all duration-200 transform hover:scale-[1.02]">
           <div class="space-y-4">
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
@@ -183,7 +223,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, reactive } from 'vue'
+  import { ref, onMounted, reactive, computed } from 'vue'
 
   const products = ref([])
   const loading = ref(false)
@@ -191,12 +231,28 @@
   const showDialog = ref(false)
   const editingProduct = ref(null)
   const submitting = ref(false)
+  const searchQuery = ref('')
 
   const formData = reactive({
     api_name: '',
     friendly_name: '',
     referer_url: '',
     appie_id: 0
+  })
+
+  // Computed property for filtered products
+  const filteredProducts = computed(() => {
+    if (!searchQuery.value) {
+      return products.value
+    }
+
+    const query = searchQuery.value.toLowerCase()
+    return products.value.filter(product =>
+      product.api_name.toLowerCase().includes(query) ||
+      product.friendly_name.toLowerCase().includes(query) ||
+      product.appie_id.toString().includes(query) ||
+      product.referer_url.toLowerCase().includes(query)
+    )
   })
 
   const resetForm = () => {
