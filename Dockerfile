@@ -9,13 +9,13 @@ FROM node:22-bookworm AS frontend-builder
 WORKDIR /frontend
 
 # Copy frontend package files
-COPY package*.json ./
+COPY web/package*.json ./
 
 # Install dependencies
 RUN npm ci
 
 # Copy frontend source code
-COPY . .
+COPY web/* .
 
 # Build frontend assets
 RUN npm run build
