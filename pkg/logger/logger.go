@@ -53,9 +53,8 @@ func (s *Service) send(log Log) {
 		fmt.Printf("Error creating request: %v", err)
 		return
 	}
-
-	req.SetBasicAuth(os.Getenv("LOGS_USER"), os.Getenv("LOGS_PASSWORD"))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-app-name", "thomas.appie")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
