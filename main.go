@@ -6,13 +6,12 @@ import (
 
 	"github.com/go-co-op/gocron"
 
+	"github.com/joho/godotenv"
+
 	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"github.com/alexraileanu/thomas-appie/pkg/product"
 	"github.com/alexraileanu/thomas-appie/pkg/thomas"
-	"github.com/alexraileanu/thomas-appie/pkg/utl"
-
-	"github.com/joho/godotenv"
 
 	"github.com/alexraileanu/thomas-appie/pkg/db"
 	"github.com/alexraileanu/thomas-appie/pkg/http"
@@ -49,7 +48,7 @@ func main() {
 	loggerService.Info("Starting cron job", map[string]interface{}{"cron": conf.Thomas.Cron})
 	s.Cron(conf.Thomas.Cron).Do(func() {
 		loggerService.Info("Fetching products from the Appie", nil)
-		productsToWatch, err := utl.ParseProductsJson()
+		productsToWatch, err := dbService.GetProducts()
 		if err != nil {
 			panic(err)
 		}
