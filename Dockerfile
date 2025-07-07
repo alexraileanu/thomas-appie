@@ -1,6 +1,25 @@
 # Use Go 1.23 bookworm as base image
 FROM golang:1.23-bookworm AS base
 
+# Node.js stage for frontend build
+# =============================================================================
+FROM node:22-bookworm AS frontend-builder
+
+# Set working directory for frontend
+WORKDIR /frontend
+
+# Copy frontend package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy frontend source code
+COPY . .
+
+# Build frontend assets
+RUN npm run build
+
 # Development stage
 # =============================================================================
 # Create a development stage based on the "base" image
@@ -30,6 +49,9 @@ FROM base AS builder
 
 # Move to working directory /build
 WORKDIR /build
+
+# Copy built frontend assets from frontend-builder stage
+COPY --from=frontend-builder /frontend/dist ./web/dist/
 
 # Copy the go.mod and go.sum files to the /build directory
 COPY go.mod go.sum ./
