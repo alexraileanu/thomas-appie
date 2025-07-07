@@ -26,7 +26,7 @@
 
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border">
             <span class="text-xs text-muted-foreground font-medium">
-              In Bonus Program
+              {{ product.discount.description }}
             </span>
             <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
               ID: {{ product.appie_id }}

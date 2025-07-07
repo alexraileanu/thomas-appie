@@ -19,7 +19,6 @@
             ]"
           >
             Products & Discounts
-            <span class="absolute top-1 right-1 text-xs opacity-50">1</span>
           </button>
           <button
             @click="activeTab = 'manage'"
@@ -31,7 +30,6 @@
             ]"
           >
             Manage Products
-            <span class="absolute top-1 right-1 text-xs opacity-50">2</span>
           </button>
         </div>
 
