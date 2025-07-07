@@ -1,0 +1,27 @@
+services:
+  thomas:
+    build:
+      context: .
+      target: ${GO_ENV}
+    container_name: "thomas"
+    env_file:
+      - ./.env
+    networks:
+      - mariadb
+    volumes:
+      - ./config.toml:/prod/config.toml
+    ports:
+      - "8000:7008"
+  db:
+    container_name: "mariadb"
+    image: "mariadb:lts"
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: "root"
+    networks:
+      - mariadb
+
+networks:
+  mariadb:
+    name: mariadb

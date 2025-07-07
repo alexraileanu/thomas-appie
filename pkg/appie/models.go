@@ -5,14 +5,14 @@ import (
 )
 
 type Product struct {
-	ID uint `gorm:"primarykey" json:"id"`
+	ID uint `gorm:"primarykey" json:"-"`
 
 	ApiName      string `json:"api_name"`
 	FriendlyName string `json:"friendly_name"`
 	RefererUrl   string `json:"referer_url"`
 	AppieId      int    `json:"appie_id"`
 
-	DiscountedProducts []DiscountedProducts `json:"-"`
+	DiscountedProducts []DiscountedProducts `json:"-" gorm:"constraint:OnDelete:CASCADE"`
 	Discount           DiscountedProducts   `json:"discount" gorm:"-"`
 
 	CreatedAt time.Time `gorm:"column:created_at" json:"-"`

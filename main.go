@@ -4,16 +4,18 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-co-op/gocron"
+
 	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
+	"github.com/alexraileanu/thomas-appie/pkg/product"
+	"github.com/alexraileanu/thomas-appie/pkg/thomas"
+	"github.com/alexraileanu/thomas-appie/pkg/utl"
 
-	"github.com/go-co-op/gocron"
 	"github.com/joho/godotenv"
 
 	"github.com/alexraileanu/thomas-appie/pkg/db"
 	"github.com/alexraileanu/thomas-appie/pkg/http"
-	"github.com/alexraileanu/thomas-appie/pkg/thomas"
-	"github.com/alexraileanu/thomas-appie/pkg/utl"
 )
 
 func main() {
@@ -34,7 +36,7 @@ func main() {
 	loggerService.Info("Connecting to the db", nil)
 	dbConnection, err := db.New(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
 	if err != nil {
-		loggerService.Error("Error connecting to the db", map[string]interface{}{"error": err.Error()})
+		//loggerService.Error("Error connecting to the db", map[string]interface{}{"error": err.Error()})
 		panic(err)
 	}
 	dbService := db.NewDBService(dbConnection, loggerService)
@@ -61,9 +63,11 @@ func main() {
 	})
 	s.StartAsync()
 
+	productService := product.New()
+
 	go func() {
 		loggerService.Info("Starting http server", nil)
-		h := http.NewServer(dbService)
+		h := http.NewServer(dbService, productService)
 		h.Start()
 	}()
 
