@@ -15,7 +15,7 @@ COPY web/package*.json ./
 RUN npm ci
 
 # Copy frontend source code
-COPY web/* .
+COPY web/ ./
 
 # Build frontend assets
 RUN npm run build
