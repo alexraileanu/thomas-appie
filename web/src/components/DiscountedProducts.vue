@@ -16,7 +16,7 @@
         </div>
       </div>
       <div class="flex gap-2">
-        <button @click="fetchProducts" :disabled="loading" class="inline-flex items-center justify-center px-4 py-2 border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent-foreground/20 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-auto shadow-sm hover:shadow-md">
+        <button @click="refreshProducts" :disabled="loading" class="inline-flex items-center justify-center px-4 py-2 border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent-foreground/20 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-auto shadow-sm hover:shadow-md">
           <span class="mr-2" :class="{ 'animate-spin': loading }">↻</span>
           Refresh
         </button>
@@ -160,26 +160,6 @@
     }
   }
 
-  // Export functionality
-  const exportProducts = () => {
-    const dataStr = JSON.stringify({
-      bonus_products: filteredBonusProducts.value,
-      regular_products: filteredRegularProducts.value,
-      export_date: new Date().toISOString(),
-      total_count: filteredProducts.value.length
-    }, null, 2)
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
-
-    const exportFileDefaultName = `products-discounts-${new Date().toISOString().split('T')[0]}.json`
-
-    const linkElement = document.createElement('a')
-    linkElement.setAttribute('href', dataUri)
-    linkElement.setAttribute('download', exportFileDefaultName)
-    linkElement.click()
-
-    showToast(`Exported ${filteredProducts.value.length} products (${filteredBonusProducts.value.length} bonus)`, 'success')
-  }
-
   // Computed properties to filter products based on search
   const filteredProducts = computed(() => {
     if (!searchQuery.value) {
@@ -210,6 +190,39 @@
 
     try {
       const response = await fetch('/api/products')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      let productsArray = Array.isArray(data) ? data : [data]
+
+      // Sort products so bonus items appear first (though they'll be separated anyway)
+      productsArray.sort((a, b) => {
+        if (a.discount.in_bonus && !b.discount.in_bonus) return -1
+        if (!a.discount.in_bonus && b.discount.in_bonus) return 1
+        return 0
+      })
+
+      products.value = productsArray
+
+      const bonusCount = productsArray.filter(p => p.discount.in_bonus).length
+      showToast(`Loaded ${productsArray.length} products (${bonusCount} bonus)`, 'success')
+
+    } catch (err) {
+      error.value = `Failed to fetch products: ${err.message}`
+      showToast('Failed to load products', 'error')
+      console.error('Error fetching products:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const refreshProducts = async () => {
+    loading.value = true
+    error.value = ''
+
+    try {
+      const response = await fetch('/api/products/refresh')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }

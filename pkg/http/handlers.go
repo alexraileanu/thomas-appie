@@ -8,12 +8,29 @@ import (
 	"github.com/alexraileanu/thomas-appie/pkg/appie"
 )
 
-//type updateProductsRequest struct {
-//	ApiName      string `json:"api_name"`
-//	AppieId      int    `json:"appie_id"`
-//	FriendlyName string `json:"friendly_name"`
-//	RefererUrl   string `json:"referer_url"`
-//}
+func (s *Server) refreshProducts(c echo.Context) error {
+	// Fetch products from the Appie
+
+	p, err := s.productService.GetAllProducts()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	a := appie.New(s.loggerService, s.conf)
+	inBonus, notInBonus, err := a.PerformProductsCheck(p)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	_ = s.dbService.SaveDiscountedProducts(append(inBonus, notInBonus...))
+
+	discounts, err := s.dbService.GetDiscountedProductsThisWeek()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, discounts)
+}
 
 func (s *Server) getDiscountedProducts(c echo.Context) error {
 	products, err := s.dbService.GetDiscountedProductsThisWeek()

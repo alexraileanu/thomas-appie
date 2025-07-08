@@ -11,7 +11,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/db"
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"github.com/alexraileanu/thomas-appie/pkg/product"
 	"github.com/alexraileanu/thomas-appie/web"
 )
@@ -20,9 +22,12 @@ type Server struct {
 	engine         *echo.Echo
 	dbService      *db.Service
 	productService *product.Service
+	loggerService  *logger.Service
+
+	conf config.Appie
 }
 
-func NewServer(dbService *db.Service, productService *product.Service) *Server {
+func NewServer(dbService *db.Service, productService *product.Service, conf config.Appie, loggerService *logger.Service) *Server {
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -32,6 +37,9 @@ func NewServer(dbService *db.Service, productService *product.Service) *Server {
 		engine:         e,
 		dbService:      dbService,
 		productService: productService,
+		loggerService:  loggerService,
+
+		conf: conf,
 	}
 
 	server.registerRoutes()
@@ -59,6 +67,8 @@ func (s *Server) Start() {
 
 func (s *Server) registerRoutes() {
 	apiGroup := s.engine.Group("/api")
+
+	apiGroup.POST("/products/refresh", s.refreshProducts)
 	apiGroup.GET("/products", s.getDiscountedProducts)
 
 	apiGroup.GET("/db/products", s.getAllProducts)

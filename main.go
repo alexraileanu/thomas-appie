@@ -66,7 +66,7 @@ func main() {
 
 	go func() {
 		loggerService.Info("Starting http server", nil)
-		h := http.NewServer(dbService, productService)
+		h := http.NewServer(dbService, productService, conf.Appie, loggerService)
 		h.Start()
 	}()
 
