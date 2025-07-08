@@ -10,7 +10,6 @@ import (
 
 	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
-	"github.com/alexraileanu/thomas-appie/pkg/product"
 	"github.com/alexraileanu/thomas-appie/pkg/thomas"
 
 	"github.com/alexraileanu/thomas-appie/pkg/db"
@@ -62,11 +61,9 @@ func main() {
 	})
 	s.StartAsync()
 
-	productService := product.New()
-
 	go func() {
 		loggerService.Info("Starting http server", nil)
-		h := http.NewServer(dbService, productService, conf.Appie, loggerService)
+		h := http.NewServer(dbService, conf.Appie, loggerService)
 		h.Start()
 	}()
 

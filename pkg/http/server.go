@@ -14,30 +14,27 @@ import (
 	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/db"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
-	"github.com/alexraileanu/thomas-appie/pkg/product"
 	"github.com/alexraileanu/thomas-appie/web"
 )
 
 type Server struct {
-	engine         *echo.Echo
-	dbService      *db.Service
-	productService *product.Service
-	loggerService  *logger.Service
+	engine        *echo.Echo
+	dbService     *db.Service
+	loggerService *logger.Service
 
 	conf config.Appie
 }
 
-func NewServer(dbService *db.Service, productService *product.Service, conf config.Appie, loggerService *logger.Service) *Server {
+func NewServer(dbService *db.Service, conf config.Appie, loggerService *logger.Service) *Server {
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 	}))
 	server := &Server{
-		engine:         e,
-		dbService:      dbService,
-		productService: productService,
-		loggerService:  loggerService,
+		engine:        e,
+		dbService:     dbService,
+		loggerService: loggerService,
 
 		conf: conf,
 	}

@@ -1,5 +1,5 @@
-# Use Go 1.23 bookworm as base image
-FROM golang:1.23-bookworm AS base
+# Use Go 1.24 bookworm as base image
+FROM golang:1.24-bookworm AS base
 
 # Node.js stage for frontend build
 # =============================================================================
@@ -33,11 +33,11 @@ ENV GOFLAGS=-buildvcs=false
 # Install the air CLI for auto-reloading
 RUN go install github.com/air-verse/air@latest
 
-# Copy the go.mod and go.sum files to the /app directory
-COPY go.mod go.sum ./
+# Copy built frontend assets from frontend-builder stage
+COPY --from=frontend-builder /frontend/dist ./web/dist/
 
-# Install dependencies
-RUN go mod download
+# Copy the go.mod and go.sum files to the /app directory
+COPY . .
 
 # Start air for live reloading
 CMD ["air"]

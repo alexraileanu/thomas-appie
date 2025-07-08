@@ -11,7 +11,7 @@ import (
 func (s *Server) refreshProducts(c echo.Context) error {
 	// Fetch products from the Appie
 
-	p, err := s.productService.GetAllProducts()
+	p, err := s.dbService.GetProducts()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
