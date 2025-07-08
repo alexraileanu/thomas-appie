@@ -11,12 +11,12 @@
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div v-for="product in products" :key="product.appie_id" class="border border-accent-foreground/10 bg-accent/30 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md hover:border-accent-foreground/20 transition-all duration-200">
+      <div v-for="product in products" :key="product.appie_id" class="bonus-card rounded-lg p-4 sm:p-6 transition-all duration-200">
         <div class="space-y-3 sm:space-y-4">
           <div class="flex items-start sm:items-center justify-between gap-2">
             <h3 class="font-semibold text-card-foreground text-sm sm:text-base leading-tight">{{ product.api_name }}</h3>
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground font-medium whitespace-nowrap">
-              ⭐ Bonus
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bonus-badge font-medium whitespace-nowrap">
+              Bonus
             </span>
           </div>
 
@@ -24,9 +24,9 @@
             {{ product.friendly_name }}
           </p>
 
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border/50">
             <span class="text-xs text-muted-foreground font-medium">
-              {{ product.discount.description }}
+              In Bonus Program
             </span>
             <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
               ID: {{ product.appie_id }}
