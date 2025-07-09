@@ -3,11 +3,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
       <h2 class="text-lg sm:text-xl font-semibold text-foreground">Product Database</h2>
       <div class="flex flex-col sm:flex-row gap-2">
-        <button @click="fetchProducts" :disabled="loading" class="inline-flex items-center justify-center px-4 py-2 border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent-foreground/20 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-auto shadow-sm hover:shadow-md">
-          <span class="mr-2" :class="{ 'animate-spin': loading }">↻</span>
-          Refresh
-        </button>
-        <button @click="openAddDialog" class="inline-flex items-center justify-center px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-md rounded-md text-sm font-medium transition-all duration-200 min-h-[44px] sm:min-h-auto shadow-sm">
+        <button @click="openAddDialog" class="inline-flex items-center justify-center px-4 py-2 border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent-foreground/20 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-auto shadow-sm hover:shadow-md">
           <span class="mr-2">+</span>
           Add Product
         </button>
@@ -92,7 +88,7 @@
               <td class="p-3 font-mono text-sm text-card-foreground">{{ product.api_name }}</td>
               <td class="p-3 text-card-foreground">{{ product.friendly_name }}</td>
               <td class="p-3">
-                <a :href="product.referer_url" target="_blank" class="text-primary hover:text-primary/80 hover:underline text-sm transition-colors duration-150 break-all">
+                <a :href="product.referer_url" target="_blank" class="text-muted-foreground hover:text-muted-foreground/80 hover:underline text-sm transition-colors duration-150 break-all">
                   {{ product.referer_url }}
                 </a>
               </td>
@@ -103,7 +99,7 @@
                     <span class="mr-1">✏️</span>
                     Edit
                   </button>
-                  <button @click="deleteProduct(product)" class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 hover:shadow-lg rounded-md text-xs font-medium transition-all duration-200 shadow-sm transform hover:scale-105">
+                  <button @click="deleteProduct(product)" class="inline-flex items-center px-3 py-1.5 bg-red-800 text-white hover:bg-red-700 hover:shadow-lg rounded-md text-xs font-medium transition-all duration-200 shadow-sm transform">
                     <span class="mr-1">🗑️</span>
                     Delete
                   </button>
