@@ -15,9 +15,6 @@
         <div class="space-y-3 sm:space-y-4">
           <div class="flex items-start sm:items-center justify-between gap-2">
             <h3 class="font-semibold text-card-foreground text-sm sm:text-base leading-tight">{{ product.api_name }}</h3>
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bonus-badge font-medium whitespace-nowrap">
-              Bonus
-            </span>
           </div>
 
           <p class="text-sm text-muted-foreground">
@@ -26,15 +23,12 @@
 
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border/50">
             <span class="text-xs text-muted-foreground font-medium">
-              In Bonus Program
-            </span>
-            <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-              ID: {{ product.appie_id }}
+              {{ product.discount.description }}
             </span>
           </div>
 
           <div class="pt-2">
-            <a :href="product.referer_url" target="_blank" class="inline-flex items-center text-xs text-primary hover:text-primary/80 hover:underline transition-colors duration-150 min-h-[44px] sm:min-h-auto">
+            <a :href="product.referer_url" target="_blank" class="inline-flex items-center text-xs text-muted-foreground hover:text-muted-foreground/80 hover:underline transition-colors duration-150 min-h-[44px] sm:min-h-auto">
               View Product →
             </a>
           </div>
