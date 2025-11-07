@@ -9,6 +9,7 @@ import (
 )
 
 type Service struct {
+	enabled bool
 }
 
 type Log struct {
@@ -17,8 +18,10 @@ type Log struct {
 	Extra   map[string]interface{} `json:"extra"`
 }
 
-func New() *Service {
-	return &Service{}
+func New(enabled bool) *Service {
+	return &Service{
+		enabled: enabled,
+	}
 }
 
 func (s *Service) Info(message string, extra map[string]interface{}) {
@@ -42,6 +45,9 @@ func (s *Service) Error(message string, error map[string]interface{}) {
 }
 
 func (s *Service) send(log Log) {
+	if !s.enabled {
+		return
+	}
 	body, err := json.Marshal(log)
 	if err != nil {
 		fmt.Printf("Error marshalling log: %v", err)

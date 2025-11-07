@@ -19,7 +19,8 @@ import (
 func main() {
 	godotenv.Load()
 
-	loggerService := logger.New()
+	enableLogs := os.Getenv("ENABLE_LOGS") == "true"
+	loggerService := logger.New(enableLogs)
 
 	conf := config.New()
 	err := conf.ParseConfig()
