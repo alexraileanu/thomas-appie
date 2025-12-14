@@ -5,3 +5,4 @@ data/thomas.db
 !data/.gitkeep
 thomas
 config.toml
+tmp/

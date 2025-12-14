@@ -1,5 +1,5 @@
 # Use Go 1.24 bookworm as base image
-FROM golang:1.24-bookworm AS base
+FROM golang:1.25-bookworm AS base
 
 # Node.js stage for frontend build
 # =============================================================================

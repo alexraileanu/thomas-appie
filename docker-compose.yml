@@ -1,20 +1,20 @@
 services:
-#  thomas:
-#    build:
-#      context: .
-#      target: development
-#    container_name: "thomas"
-#    env_file:
-#      - ./.env
-#    networks:
-#      - mariadb
-#    volumes:
-#      - ./config.toml:/app/config/config.toml
-#      - .:/app
-#    ports:
-#      - "8000:7008"
-#    depends_on:
-#      - db
+  thomas:
+    build:
+      context: .
+      target: development
+    container_name: "thomas"
+    env_file:
+      - ./.env
+    networks:
+      - mariadb
+    volumes:
+      - ./config/config.toml:/app/config/config.toml
+      - .:/app
+    ports:
+      - "8000:7008"
+    depends_on:
+      - db
   db:
     container_name: "mariadb"
     image: "mariadb:lts"

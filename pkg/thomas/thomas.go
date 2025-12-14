@@ -2,11 +2,12 @@ package thomas
 
 import (
 	"fmt"
-	"github.com/alexraileanu/thomas-appie/pkg/config"
-	"github.com/alexraileanu/thomas-appie/pkg/logger"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/alexraileanu/thomas-appie/pkg/config"
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 
 	"github.com/bwmarrin/discordgo"
 
