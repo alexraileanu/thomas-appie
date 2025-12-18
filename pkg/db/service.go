@@ -94,7 +94,7 @@ func getBonusDay() string {
 	today := time.Now()
 
 	// Calculate the number of days to subtract to get to Monday (considering Sunday as the first day of the week)
-	daysToSubtract := int(today.Weekday() - time.Friday)
+	daysToSubtract := int(today.Weekday() - time.Saturday)
 	if daysToSubtract < 0 {
 		daysToSubtract += 7 // Add 7 to loop back to Monday of the previous week
 	}
