@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/charmbracelet/log"
+
 	"net/http"
 	"os"
 )
@@ -25,30 +27,38 @@ func New(enabled bool) *Service {
 }
 
 func (s *Service) Info(message string, extra map[string]interface{}) {
-	log := Log{
+	l := Log{
 		Message: message,
 		Level:   "INFO",
 		Extra:   extra,
 	}
 
-	s.send(log)
+	s.send(l)
 }
 
 func (s *Service) Error(message string, error map[string]interface{}) {
-	log := Log{
+	l := Log{
 		Message: message,
 		Level:   "ERROR",
 		Extra:   error,
 	}
 
-	s.send(log)
+	s.send(l)
 }
 
-func (s *Service) send(log Log) {
+func (s *Service) send(l Log) {
 	if !s.enabled {
+		logger := log.New(os.Stdout)
+		if l.Level == "INFO" {
+			logger.SetLevel(log.InfoLevel)
+		} else if l.Level == "ERROR" {
+			logger.SetLevel(log.ErrorLevel)
+		}
+
+		logger.Log(logger.GetLevel(), l.Message, l.Extra)
 		return
 	}
-	body, err := json.Marshal(log)
+	body, err := json.Marshal(l)
 	if err != nil {
 		fmt.Printf("Error marshalling log: %v", err)
 		return
