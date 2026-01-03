@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/charmbracelet/log"
-
 	"net/http"
 	"os"
+
+	"github.com/charmbracelet/log"
 )
 
 type Service struct {
@@ -55,7 +55,11 @@ func (s *Service) send(l Log) {
 			logger.SetLevel(log.ErrorLevel)
 		}
 
-		logger.Log(logger.GetLevel(), l.Message, l.Extra)
+		if l.Extra != nil {
+			logger.Log(logger.GetLevel(), l.Message, l.Extra)
+		} else {
+			logger.Log(logger.GetLevel(), l.Message)
+		}
 		return
 	}
 	body, err := json.Marshal(l)

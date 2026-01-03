@@ -15,6 +15,7 @@ type Appie struct {
 	ClientVersion      string `toml:"client_version"`
 	UserAgent          string `toml:"user_agent"`
 	ClientPlatformType string `toml:"client_platform_type"`
+	BonusDay           int    `toml:"bonus_day"`
 }
 
 type Config struct {

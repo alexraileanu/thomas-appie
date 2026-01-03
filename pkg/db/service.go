@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alexraileanu/thomas-appie/pkg/config"
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
 
 	"github.com/alexraileanu/thomas-appie/pkg/appie"
@@ -12,10 +13,11 @@ import (
 type Service struct {
 	db            *DB
 	loggerService *logger.Service
+	cfg           config.Appie
 }
 
-func NewDBService(db *DB, loggerService *logger.Service) *Service {
-	return &Service{db: db, loggerService: loggerService}
+func NewDBService(db *DB, loggerService *logger.Service, cfg config.Appie) *Service {
+	return &Service{db: db, loggerService: loggerService, cfg: cfg}
 }
 
 func (s *Service) GetProducts() ([]appie.Product, error) {
@@ -30,7 +32,7 @@ func (s *Service) GetProducts() ([]appie.Product, error) {
 }
 
 func (s *Service) GetDiscountedProductsThisWeek() ([]*appie.Product, error) {
-	monday := fmt.Sprintf("%s 00:00:00.000", getBonusDay())
+	monday := fmt.Sprintf("%s 00:00:00.000", getBonusDay(s.cfg.BonusDay))
 	now := time.Now()
 
 	var products []*appie.Product
@@ -52,7 +54,7 @@ func (s *Service) GetDiscountedProductsThisWeek() ([]*appie.Product, error) {
 }
 
 func (s *Service) SaveDiscountedProducts(products []appie.Product) error {
-	monday := fmt.Sprintf("%s 00:00:00.000", getBonusDay())
+	monday := fmt.Sprintf("%s 00:00:00.000", getBonusDay(s.cfg.BonusDay))
 	now := time.Now()
 	for _, product := range products {
 		s.db.handler.Where("product_id = ? AND created_at BETWEEN ? AND ?", product.ID, monday, now).FirstOrCreate(&product.DiscountedProducts[0])
@@ -89,14 +91,15 @@ func (s *Service) SaveProduct(products []appie.Product) error {
 	return nil
 }
 
-func getBonusDay() string {
+func getBonusDay(bonusDay int) string {
 	// Get the current date
 	today := time.Now()
+	bonusWeekDay := time.Weekday(bonusDay)
 
-	// Calculate the number of days to subtract to get to Monday (considering Sunday as the first day of the week)
-	daysToSubtract := int(today.Weekday() - time.Saturday)
+	// Calculate the number of days to subtract to get to bonus day (normally monday but can be configured to be something else)
+	daysToSubtract := int(today.Weekday() - bonusWeekDay)
 	if daysToSubtract < 0 {
-		daysToSubtract += 7 // Add 7 to loop back to Monday of the previous week
+		daysToSubtract += 7 // Add 7 to loop back to bonus day of the previous week
 	}
 
 	return today.AddDate(0, 0, -daysToSubtract).Format("2006-01-02")
