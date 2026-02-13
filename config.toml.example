@@ -5,3 +5,5 @@ cron = "30 10 * * MON"
 client_name = "abc"
 client_version = "def"
 user_agent = "ghi"
+bonus_day = 1 # 0=sunday, 1=monday, 2=tuesday, etc.
+client_platform_type = "Web"
