@@ -38,7 +38,7 @@ func main() {
 		//loggerService.Error("Error connecting to the db", map[string]interface{}{"error": err.Error()})
 		panic(err)
 	}
-	dbService := db.NewDBService(dbConnection, loggerService)
+	dbService := db.NewDBService(dbConnection, loggerService, conf.Appie)
 
 	t, err := thomas.New(dbService, loggerService, conf)
 	if err != nil {
