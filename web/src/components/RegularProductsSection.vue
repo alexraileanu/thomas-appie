@@ -27,6 +27,7 @@
       <div class="p-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div v-for="product in products" :key="product.appie_id" class="border border-border rounded-lg p-4 bg-card shadow-sm hover:shadow-md hover:border-accent-foreground/20 transition-all duration-200 transform hover:scale-[1.02]">
           <div class="space-y-3 sm:space-y-4">
+            <img v-if="product.image" :src="product.image" :alt="product.api_name" class="w-full h-32 object-contain rounded-md bg-muted" />
             <div class="flex items-start sm:items-center justify-between gap-2">
               <h3 class="font-semibold text-card-foreground text-sm sm:text-base leading-tight">{{ product.api_name }}</h3>
               <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full whitespace-nowrap">

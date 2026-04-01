@@ -12,6 +12,8 @@ type Product struct {
 	RefererUrl   string `json:"referer_url"`
 	AppieId      int    `json:"appie_id"`
 
+	Image string `json:"image"`
+
 	DiscountedProducts []DiscountedProducts `json:"-" gorm:"constraint:OnDelete:CASCADE"`
 	Discount           DiscountedProducts   `json:"discount" gorm:"-"`
 
@@ -30,7 +32,26 @@ type DiscountedProducts struct {
 	CreatedAt time.Time `gorm:"column:created_at" json:"-"`
 }
 
+type AnonAuthResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
 type ProductInfoResponse struct {
+	ProductId   uint `json:"productId"`
+	ProductCard struct {
+		Title  string `json:"title"`
+		Images []struct {
+			URL string `json:"url"`
+		} `json:"images"`
+		IsBonus          bool    `json:"isBonus"`
+		IsBonusPrice     bool    `json:"isBonusPrice"`
+		BonusMechanism   string  `json:"bonusMechanism"`
+		CurrentPrice     string  `json:"currentPrice"`
+		PriceBeforeBonus float32 `json:"priceBeforeBonus"`
+	} `json:"productCard"`
+}
+
+type GQLProductInfoResponse struct {
 	Data struct {
 		Product struct {
 			Id    int    `json:"id"`

@@ -2,6 +2,7 @@
 .idea
 products.json
 data/thomas.db
+data/mysql
 !data/.gitkeep
 thomas
 config.toml
