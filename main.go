@@ -20,10 +20,11 @@ func main() {
 	godotenv.Load()
 
 	enableLogs := os.Getenv("ENABLE_LOGS") == "true"
-	loggerService := logger.New(enableLogs)
+	enableDebug := os.Getenv("DEBUG") == "true"
+	loggerService := logger.New(enableLogs, enableDebug)
 
 	conf := config.New()
-	err := conf.ParseConfig()
+	err := conf.ParseConfig(loggerService)
 	if err != nil {
 		loggerService.Error("Error parsing config", map[string]interface{}{"error": err.Error()})
 		panic(err)
@@ -33,9 +34,9 @@ func main() {
 	s := gocron.NewScheduler(time.Local)
 
 	loggerService.Info("Connecting to the db", nil)
-	dbConnection, err := db.New(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
+	dbConnection, err := db.New(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"), loggerService)
 	if err != nil {
-		//loggerService.Error("Error connecting to the db", map[string]interface{}{"error": err.Error()})
+		loggerService.Error("Error connecting to the db", map[string]interface{}{"error": err.Error()})
 		panic(err)
 	}
 	dbService := db.NewDBService(dbConnection, loggerService, conf.Appie)
@@ -47,14 +48,13 @@ func main() {
 
 	loggerService.Info("Starting cron job", map[string]interface{}{"cron": conf.Thomas.Cron})
 	s.Cron(conf.Thomas.Cron).Do(func() {
-		loggerService.Info("Fetching products from the Appie", nil)
 		productsToWatch, err := dbService.GetProducts()
 		if err != nil {
 			panic(err)
 		}
 		t.Go()
 
-		loggerService.Info("Saving products to the db", map[string]interface{}{"products": productsToWatch})
+		loggerService.Info("Saving products to the db", map[string]interface{}{"count": len(productsToWatch)})
 		err = dbService.SaveProduct(productsToWatch)
 		if err != nil {
 			panic(err)

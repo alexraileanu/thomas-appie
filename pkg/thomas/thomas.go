@@ -38,7 +38,6 @@ func New(dbService *db.Service, loggerService *logger.Service, config config.Con
 }
 
 func (t *Thomas) Go() {
-	t.loggerService.Info("Fetching products from the db", nil)
 	products, err := t.dbService.GetProducts()
 	if err != nil {
 		t.loggerService.Error("Error fetching products from the db", map[string]interface{}{"error": err.Error()})
@@ -47,7 +46,7 @@ func (t *Thomas) Go() {
 
 	a := appie.New(t.loggerService, t.config.Appie)
 
-	t.loggerService.Info("Checking products from the Appie", nil)
+	t.loggerService.Info("Checking products", map[string]interface{}{"count": len(products)})
 	productsInBonus, productsNotInBonus, err := a.PerformProductsCheck(products)
 	if err != nil {
 		panic(err)
@@ -72,7 +71,7 @@ func (t *Thomas) Go() {
 		}
 	}
 
-	t.loggerService.Info("Sending message to Discord", nil)
+	t.loggerService.Info("Sending Discord message", map[string]interface{}{"in_bonus": len(productsInBonus), "not_in_bonus": len(productsNotInBonus)})
 
 	inBonus := t.fixFieldsForDiscord(inBonusFields)
 	notInBonus := t.fixFieldsForDiscord(notInBonusFields)
@@ -83,9 +82,10 @@ func (t *Thomas) Go() {
 
 	_, err = t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
 	if err != nil {
-		t.loggerService.Error("Error sending message", map[string]interface{}{"error": err.Error()})
+		t.loggerService.Error("Error sending Discord message", map[string]interface{}{"error": err.Error()})
 		return
 	}
+	t.loggerService.Info("Discord message sent", nil)
 }
 
 func (t *Thomas) fixFieldsForDiscord(fields []*discordgo.MessageEmbedField) [][]*discordgo.MessageEmbedField {
@@ -128,7 +128,7 @@ func (t *Thomas) fixEmbedsForDiscord(embeds [][]*discordgo.MessageEmbedField, ti
 
 func (t *Thomas) Close() {
 	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Thomas is now running.  Press CTRL-C to exit.")
+	t.loggerService.Info("Thomas is running, press CTRL-C to exit", nil)
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc

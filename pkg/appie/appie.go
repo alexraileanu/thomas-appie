@@ -96,15 +96,12 @@ func (a *Appie) PerformProductsCheck(productsToWatch []Product) ([]Product, []Pr
 }
 
 func (a *Appie) makeBaseRequest(hasAuth bool, r *http.Request) error {
-	a.loggerService.Info("Creating request", nil)
-
 	r.Header.Add("User-Agent", a.config.UserAgent)
 	r.Header.Add("Client-Version", a.config.ClientVersion)
 	r.Header.Add("X-Application", a.config.XApplication)
 	r.Header.Add("Accept", "application/json")
 	r.Header.Add("Content-Type", "application/json")
 	if hasAuth {
-		a.loggerService.Info("Request has auth header", nil)
 		r.Header.Add("Authorization", "Bearer "+a.authToken)
 	}
 
@@ -126,10 +123,9 @@ func (a *Appie) getAnonAuthToken() error {
 	}
 	c := http.Client{}
 
-	a.loggerService.Info(fmt.Sprintf("Getting auth token from %s", r.URL.String()), nil)
 	resp, err := c.Do(r)
 	if err != nil {
-		a.loggerService.Error(fmt.Sprintf("Anon auth token fetching failed: %v", err), nil)
+		a.loggerService.Error("Anon auth token request failed", map[string]interface{}{"error": err.Error()})
 		return err
 	}
 	defer resp.Body.Close()
@@ -137,34 +133,36 @@ func (a *Appie) getAnonAuthToken() error {
 	var authResponse AnonAuthResponse
 	err = json.NewDecoder(resp.Body).Decode(&authResponse)
 	if err != nil {
-		a.loggerService.Error(fmt.Sprintf("Anon auth token decoding failed: %v", err), nil)
+		a.loggerService.Error("Anon auth token decoding failed", map[string]interface{}{"error": err.Error()})
 		return err
 	}
 
-	a.loggerService.Info("Got anon auth token", map[string]interface{}{"token": authResponse.AccessToken})
+	a.loggerService.Info("Got anon auth token", nil)
+	a.loggerService.Debug("Anon auth token", map[string]interface{}{"token": authResponse.AccessToken})
 	a.authToken = authResponse.AccessToken
 
 	return nil
 }
 
 func (a *Appie) makeRequest(product Product) (ProductInfoResponse, error) {
-	a.loggerService.Info(fmt.Sprintf("making request for product %s", product.FriendlyName), nil)
-	r, err := http.NewRequest("GET", fmt.Sprintf("%s/%s/%d", RestURL, "mobile-services/product/detail/v4/fir", product.AppieId), nil)
+	url := fmt.Sprintf("%s/%s/%d", RestURL, "mobile-services/product/detail/v4/fir", product.AppieId)
+	a.loggerService.Info("Fetching product info", map[string]interface{}{"product": product.FriendlyName})
+	a.loggerService.Debug("Product request URL", map[string]interface{}{"product": product.FriendlyName, "url": url})
+	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return ProductInfoResponse{}, err
 	}
 
 	err = a.makeBaseRequest(true, r)
 	if err != nil {
-		a.loggerService.Error(fmt.Sprintf("Anon auth token fetching failed: %v", err), nil)
+		a.loggerService.Error("Failed to build product request", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
 		return ProductInfoResponse{}, err
 	}
 	c := http.Client{}
 
-	a.loggerService.Info(fmt.Sprintf("Getting product info from %s", r.URL.String()), nil)
 	resp, err := c.Do(r)
 	if err != nil {
-		a.loggerService.Error(fmt.Sprintf("Anon auth token fetching failed: %v", err), nil)
+		a.loggerService.Error("Product info request failed", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
 		return ProductInfoResponse{}, err
 	}
 	defer resp.Body.Close()
@@ -172,12 +170,11 @@ func (a *Appie) makeRequest(product Product) (ProductInfoResponse, error) {
 	var productInfo ProductInfoResponse
 	err = json.NewDecoder(resp.Body).Decode(&productInfo)
 	if err != nil {
-		a.loggerService.Error(fmt.Sprintf("Anon auth token decoding failed: %v", err), nil)
+		a.loggerService.Error("Failed to decode product info response", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
 		return ProductInfoResponse{}, err
 	}
 
-	a.loggerService.Info("got product info", map[string]interface{}{"productInfo": productInfo})
-
+	a.loggerService.Debug("Product info response", map[string]interface{}{"product": product.FriendlyName, "is_bonus": productInfo.ProductCard.IsBonus, "bonus_mechanism": productInfo.ProductCard.BonusMechanism})
 	return productInfo, nil
 }
 
@@ -201,27 +198,30 @@ func (a *Appie) makeGqlRequest(product Product) (GQLProductInfoResponse, error) 
 	r.Header.Add("Referer", product.RefererUrl)
 	r.Header.Add("Content-Type", "application/json")
 
-	a.loggerService.Info("Making request to Appie", map[string]interface{}{"request": preparedRequest})
+	a.loggerService.Info("Fetching product info", map[string]interface{}{"product": product.FriendlyName})
+	a.loggerService.Debug("GQL request body", map[string]interface{}{"product": product.FriendlyName, "body": preparedRequest})
 
 	resp, err := r.SetBody(preparedRequest).Post(GQLUrl)
 	if err != nil {
-		a.loggerService.Error("Error making request to Appie", map[string]interface{}{"error": err.Error()})
+		a.loggerService.Error("Product info request failed", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
 		return GQLProductInfoResponse{}, err
 	}
 
 	if resp.StatusCode() != 200 {
-		a.loggerService.Error("Got err response from Appie", map[string]interface{}{"response_headers": resp.Header(), "status_code": resp.Header()})
+		a.loggerService.Error("Unexpected response from Appie", map[string]interface{}{"product": product.FriendlyName, "status_code": resp.StatusCode()})
+		a.loggerService.Debug("Error response body", map[string]interface{}{"product": product.FriendlyName, "body": string(resp.Body())})
 		return GQLProductInfoResponse{}, err
 	}
 
 	productInfo := new(GQLProductInfoResponse)
 	err = json.Unmarshal(resp.Body(), productInfo)
 	if err != nil {
-		a.loggerService.Error("Error unmarshalling response from Appie", map[string]interface{}{"error": err.Error()})
+		a.loggerService.Error("Failed to decode product info response", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
 		return GQLProductInfoResponse{}, err
 
 	}
 
+	a.loggerService.Debug("Product info response", map[string]interface{}{"product": product.FriendlyName, "has_discount": productInfo.Data.Product.Price.Discount.SegmentId != 0, "discount_description": productInfo.Data.Product.Price.Discount.Description})
 	return *productInfo, nil
 }
 

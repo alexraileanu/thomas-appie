@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/alexraileanu/thomas-appie/pkg/logger"
 )
 
 type Thomas struct {
@@ -30,13 +32,21 @@ func New() Config {
 	return Config{}
 }
 
-func (c *Config) ParseConfig() error {
+func (c *Config) ParseConfig(loggerService *logger.Service) error {
+	path := os.Getenv("CONFIG_FILE_PATH")
+	loggerService.Debug("Parsing config file", map[string]interface{}{"path": path})
+
 	var conf Config
-	if _, err := toml.DecodeFile(os.Getenv("CONFIG_FILE_PATH"), &conf); err != nil {
+	if _, err := toml.DecodeFile(path, &conf); err != nil {
 		return err
 	}
 	c.Thomas = conf.Thomas
 	c.Appie = conf.Appie
 
+	loggerService.Debug("Parsed config", map[string]interface{}{
+		"cron":     c.Thomas.Cron,
+		"v2":       c.Appie.V2,
+		"bonus_day": c.Appie.BonusDay,
+	})
 	return nil
 }

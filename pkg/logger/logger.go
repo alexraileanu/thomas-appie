@@ -12,6 +12,7 @@ import (
 
 type Service struct {
 	enabled bool
+	debug   bool
 }
 
 type Log struct {
@@ -20,9 +21,10 @@ type Log struct {
 	Extra   map[string]interface{} `json:"extra"`
 }
 
-func New(enabled bool) *Service {
+func New(enabled bool, debug bool) *Service {
 	return &Service{
 		enabled: enabled,
+		debug:   debug,
 	}
 }
 
@@ -30,6 +32,19 @@ func (s *Service) Info(message string, extra map[string]interface{}) {
 	l := Log{
 		Message: message,
 		Level:   "INFO",
+		Extra:   extra,
+	}
+
+	s.send(l)
+}
+
+func (s *Service) Debug(message string, extra map[string]interface{}) {
+	if !s.debug {
+		return
+	}
+	l := Log{
+		Message: message,
+		Level:   "DEBUG",
 		Extra:   extra,
 	}
 
@@ -49,14 +64,21 @@ func (s *Service) Error(message string, error map[string]interface{}) {
 func (s *Service) send(l Log) {
 	if !s.enabled {
 		logger := log.New(os.Stdout)
-		if l.Level == "INFO" {
+		switch l.Level {
+		case "DEBUG":
+			logger.SetLevel(log.DebugLevel)
+		case "INFO":
 			logger.SetLevel(log.InfoLevel)
-		} else if l.Level == "ERROR" {
+		case "ERROR":
 			logger.SetLevel(log.ErrorLevel)
 		}
 
 		if l.Extra != nil {
-			logger.Log(logger.GetLevel(), l.Message, l.Extra)
+			args := make([]interface{}, 0, len(l.Extra)*2)
+			for k, v := range l.Extra {
+				args = append(args, k, v)
+			}
+			logger.Log(logger.GetLevel(), l.Message, args...)
 		} else {
 			logger.Log(logger.GetLevel(), l.Message)
 		}

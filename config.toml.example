@@ -7,3 +7,4 @@ client_version = "def"
 user_agent = "ghi"
 bonus_day = 1 # 0=sunday, 1=monday, 2=tuesday, etc.
 client_platform_type = "Web"
+v2 = false # to use the v2 version which uses the mobile endpoints
