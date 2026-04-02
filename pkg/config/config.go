@@ -13,14 +13,11 @@ type Thomas struct {
 }
 
 type Appie struct {
-	ClientName         string `toml:"client_name"`
-	ClientVersion      string `toml:"client_version"`
-	UserAgent          string `toml:"user_agent"`
-	ClientPlatformType string `toml:"client_platform_type"`
-	BonusDay           int    `toml:"bonus_day"`
-
-	V2           bool   `toml:"v2"`
-	XApplication string `toml:"x_application"`
+	ClientName    string `toml:"client_name"`
+	ClientVersion string `toml:"client_version"`
+	UserAgent     string `toml:"user_agent"`
+	XApplication  string `toml:"x_application"`
+	BonusDay      int    `toml:"bonus_day"`
 }
 
 type Config struct {
@@ -44,8 +41,7 @@ func (c *Config) ParseConfig(loggerService *logger.Service) error {
 	c.Appie = conf.Appie
 
 	loggerService.Debug("Parsed config", map[string]interface{}{
-		"cron":     c.Thomas.Cron,
-		"v2":       c.Appie.V2,
+		"cron":      c.Thomas.Cron,
 		"bonus_day": c.Appie.BonusDay,
 	})
 	return nil

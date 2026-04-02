@@ -7,7 +7,6 @@ require (
 	github.com/bwmarrin/discordgo v0.27.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/go-co-op/gocron v1.37.0
-	github.com/go-resty/resty/v2 v2.7.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.12.0
 	gorm.io/driver/mysql v1.5.6

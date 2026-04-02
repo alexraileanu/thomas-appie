@@ -15,6 +15,12 @@ import (
 	"github.com/alexraileanu/thomas-appie/pkg/db"
 )
 
+const (
+	colorBonus    = 0xff7900
+	colorNotBonus = 0xff0000
+	maxEmbedFields = 25
+)
+
 type Thomas struct {
 	session       *discordgo.Session
 	dbService     *db.Service
@@ -29,8 +35,7 @@ func New(dbService *db.Service, loggerService *logger.Service, config config.Con
 		return nil, err
 	}
 
-	err = session.Open()
-	if err != nil {
+	if err = session.Open(); err != nil {
 		return nil, err
 	}
 
@@ -47,92 +52,66 @@ func (t *Thomas) Go() {
 	a := appie.New(t.loggerService, t.config.Appie)
 
 	t.loggerService.Info("Checking products", map[string]interface{}{"count": len(products)})
-	productsInBonus, productsNotInBonus, err := a.PerformProductsCheck(products)
+	inBonus, notInBonus, err := a.PerformProductsCheck(products)
 	if err != nil {
 		panic(err)
 	}
-	var inBonusFields []*discordgo.MessageEmbedField
-	if len(productsInBonus) != 0 {
-		for _, prod := range productsInBonus {
-			inBonusFields = append(inBonusFields, &discordgo.MessageEmbedField{
-				Name:  fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
-				Value: fmt.Sprintf("%s %s", prod.DiscountedProducts[0].Description, prod.DiscountedProducts[0].Label),
-			})
-		}
-	}
-	_ = t.dbService.SaveDiscountedProducts(append(productsInBonus, productsNotInBonus...))
 
-	var notInBonusFields []*discordgo.MessageEmbedField
-	if len(productsNotInBonus) != 0 {
-		for _, prod := range productsNotInBonus {
-			notInBonusFields = append(notInBonusFields, &discordgo.MessageEmbedField{
-				Name: fmt.Sprintf("%s (%s)", prod.FriendlyName, prod.ApiName),
-			})
-		}
-	}
+	_ = t.dbService.SaveDiscountedProducts(append(inBonus, notInBonus...))
 
-	t.loggerService.Info("Sending Discord message", map[string]interface{}{"in_bonus": len(productsInBonus), "not_in_bonus": len(productsNotInBonus)})
-
-	inBonus := t.fixFieldsForDiscord(inBonusFields)
-	notInBonus := t.fixFieldsForDiscord(notInBonusFields)
+	inBonusFields := productFields(inBonus, true)
+	notInBonusFields := productFields(notInBonus, false)
 
 	var embeds []*discordgo.MessageEmbed
-	embeds = append(embeds, t.fixEmbedsForDiscord(inBonus, "Products that are in bonus this week at the Appie", 0xff7900)...)
-	embeds = append(embeds, t.fixEmbedsForDiscord(notInBonus, "Products that aren't in bonus this week at the Appie", 0xff0000)...)
+	embeds = append(embeds, buildEmbeds(inBonusFields, "Products that are in bonus this week at the Appie", colorBonus)...)
+	embeds = append(embeds, buildEmbeds(notInBonusFields, "Products that aren't in bonus this week at the Appie", colorNotBonus)...)
 
-	_, err = t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds)
-	if err != nil {
+	t.loggerService.Info("Sending Discord message", map[string]interface{}{"in_bonus": len(inBonus), "not_in_bonus": len(notInBonus)})
+	if _, err = t.session.ChannelMessageSendEmbeds(os.Getenv("DISCORD_CHANNEL_ID"), embeds); err != nil {
 		t.loggerService.Error("Error sending Discord message", map[string]interface{}{"error": err.Error()})
 		return
 	}
 	t.loggerService.Info("Discord message sent", nil)
 }
 
-func (t *Thomas) fixFieldsForDiscord(fields []*discordgo.MessageEmbedField) [][]*discordgo.MessageEmbedField {
-	var fixedFields [][]*discordgo.MessageEmbedField
-	if len(fields) > 25 {
-		for i := 0; i < len(fields); i += 25 {
-			end := i + 25
-			if end > len(fields) {
-				end = len(fields)
-			}
-			fixedFields = append(fixedFields, fields[i:end])
-		}
-	} else {
-		fixedFields = append(fixedFields, fields)
-	}
-
-	return fixedFields
-}
-
-func (t *Thomas) fixEmbedsForDiscord(embeds [][]*discordgo.MessageEmbedField, title string, color int) []*discordgo.MessageEmbed {
-	var fixedEmbeds []*discordgo.MessageEmbed
-	if len(embeds) > 1 {
-		for _, bonus := range embeds {
-			fixedEmbeds = append(fixedEmbeds, &discordgo.MessageEmbed{
-				Color:  color,
-				Title:  title,
-				Fields: bonus,
-			})
-		}
-	} else {
-		fixedEmbeds = append(fixedEmbeds, &discordgo.MessageEmbed{
-			Color:  color,
-			Title:  title,
-			Fields: embeds[0],
-		})
-	}
-
-	return fixedEmbeds
-}
-
 func (t *Thomas) Close() {
-	// Wait here until CTRL-C or other term signal is received.
 	t.loggerService.Info("Thomas is running, press CTRL-C to exit", nil)
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
-
-	// Cleanly close down the Thomas session.
 	t.session.Close()
+}
+
+// productFields builds Discord embed fields for a list of products.
+// For bonus products it includes the discount description; for non-bonus only the name.
+func productFields(products []appie.Product, withDescription bool) []*discordgo.MessageEmbedField {
+	fields := make([]*discordgo.MessageEmbedField, 0, len(products))
+	for _, p := range products {
+		field := &discordgo.MessageEmbedField{
+			Name: fmt.Sprintf("%s (%s)", p.FriendlyName, p.ApiName),
+		}
+		if withDescription && len(p.DiscountedProducts) > 0 {
+			field.Value = fmt.Sprintf("%s %s", p.DiscountedProducts[0].Description, p.DiscountedProducts[0].Label)
+		}
+		fields = append(fields, field)
+	}
+	return fields
+}
+
+// buildEmbeds splits fields into chunks of maxEmbedFields (Discord's per-embed limit)
+// and wraps each chunk in a MessageEmbed with the given title and color.
+func buildEmbeds(fields []*discordgo.MessageEmbedField, title string, color int) []*discordgo.MessageEmbed {
+	var embeds []*discordgo.MessageEmbed
+	for i := 0; i < len(fields); i += maxEmbedFields {
+		end := i + maxEmbedFields
+		if end > len(fields) {
+			end = len(fields)
+		}
+		embeds = append(embeds, &discordgo.MessageEmbed{
+			Color:  color,
+			Title:  title,
+			Fields: fields[i:end],
+		})
+	}
+	return embeds
 }
