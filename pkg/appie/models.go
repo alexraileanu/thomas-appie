@@ -46,7 +46,6 @@ type ProductInfoResponse struct {
 		IsBonus          bool    `json:"isBonus"`
 		IsBonusPrice     bool    `json:"isBonusPrice"`
 		BonusMechanism   string  `json:"bonusMechanism"`
-		CurrentPrice     string  `json:"currentPrice"`
 		PriceBeforeBonus float32 `json:"priceBeforeBonus"`
 	} `json:"productCard"`
 }
