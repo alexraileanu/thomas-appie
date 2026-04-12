@@ -53,6 +53,12 @@ func (a *Appie) PerformProductsCheck(products []Product) ([]Product, []Product, 
 		} else {
 			notInBonus = append(notInBonus, product)
 		}
+		a.loggerService.Info("Fetched product info", map[string]interface{}{
+			"isBonus":        info.ProductCard.IsBonus,
+			"bonusMechanism": info.ProductCard.BonusMechanism,
+			"images":         info.ProductCard.Images,
+			"title":          product.FriendlyName,
+		})
 	}
 
 	return inBonus, notInBonus, nil

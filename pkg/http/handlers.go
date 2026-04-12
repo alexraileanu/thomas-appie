@@ -24,7 +24,7 @@ func (s *Server) refreshProducts(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	_ = s.dbService.SaveProduct(append(inBonus, notInBonus...))
+	_ = s.dbService.SaveDiscountedProducts(append(inBonus, notInBonus...))
 
 	discounts, err := s.dbService.GetDiscountedProductsThisWeek()
 	if err != nil {
