@@ -16,6 +16,7 @@ type Product struct {
 
 	DiscountedProducts []DiscountedProducts `json:"-" gorm:"constraint:OnDelete:CASCADE"`
 	Discount           DiscountedProducts   `json:"discount" gorm:"-"`
+	LastBonus          *time.Time           `json:"last_bonus" gorm:"-"`
 
 	CreatedAt time.Time `gorm:"column:created_at" json:"-"`
 }

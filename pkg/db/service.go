@@ -50,11 +50,41 @@ func (s *Service) GetDiscountedProductsThisWeek() ([]*appie.Product, error) {
 	}
 
 	s.loggerService.Debug("Fetched discounted products", map[string]interface{}{"count": len(products)})
-	for _, product := range products {
-		product.Discount = product.DiscountedProducts[0]
+
+	lastBonusDates, err := s.getLastBonusDates()
+	if err != nil {
+		s.loggerService.Error("Error fetching last bonus dates", map[string]interface{}{"error": err.Error()})
 	}
 
+	for _, product := range products {
+		product.Discount = product.DiscountedProducts[0]
+		if t, ok := lastBonusDates[product.ID]; ok {
+			product.LastBonus = &t
+		}
+	}
+	fmt.Printf("products: %+v\n", products)
+
 	return products, nil
+}
+
+type lastBonusResult struct {
+	ProductID uint
+	LastBonus time.Time
+}
+
+func (s *Service) getLastBonusDates() (map[uint]time.Time, error) {
+	var results []lastBonusResult
+	result := s.db.handler.Raw(
+		"SELECT product_id, MAX(created_at) AS last_bonus FROM discounted_products WHERE in_bonus = 1 GROUP BY product_id",
+	).Scan(&results)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	m := make(map[uint]time.Time, len(results))
+	for _, r := range results {
+		m[r.ProductID] = r.LastBonus
+	}
+	return m, nil
 }
 
 func (s *Service) SaveDiscountedProducts(products []appie.Product) error {

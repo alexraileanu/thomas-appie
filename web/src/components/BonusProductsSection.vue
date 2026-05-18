@@ -26,6 +26,9 @@
             <span class="text-xs text-muted-foreground font-medium">
               {{ product.discount.description }}
             </span>
+            <span class="text-xs text-muted-foreground">
+              Last bonus: {{ formatLastBonus(product.last_bonus) }}
+            </span>
           </div>
 
           <div class="pt-2">
@@ -46,4 +49,9 @@
       required: true
     }
   })
+
+  function formatLastBonus(lastBonus) {
+    if (!lastBonus) return 'unknown'
+    return new Date(lastBonus).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
 </script>

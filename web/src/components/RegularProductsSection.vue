@@ -41,7 +41,7 @@
 
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border">
               <span class="text-xs text-muted-foreground">
-                Regular Product
+                Last bonus: {{ formatLastBonus(product.last_bonus) }}
               </span>
               <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
                 ID: {{ product.appie_id }}
@@ -73,4 +73,9 @@
   })
 
   defineEmits(['toggle'])
+
+  function formatLastBonus(lastBonus) {
+    if (!lastBonus) return 'never'
+    return new Date(lastBonus).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
 </script>
