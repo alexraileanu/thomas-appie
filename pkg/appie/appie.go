@@ -11,7 +11,29 @@ import (
 	"github.com/alexraileanu/thomas-appie/pkg/logger"
 )
 
-const restURL = "https://api.ah.nl"
+const (
+	restURL    = "https://api.ah.nl"
+	graphQLURL = restURL + "/graphql"
+)
+
+// productDetailsQuery is a trimmed copy of the Appie app's FetchProductDetails
+// query (see gwillem/appie-go products.go). It replaces
+// /mobile-services/product/detail/v4/fir/{id}, which returns 404 since 2026-11.
+// source: https://github.com/gwillem/appie-go/blob/main/products.go#L75-L77
+const productDetailsQuery = `query FetchProductDetails($productId: Int!) {
+  product(id: $productId) {
+    id
+    title
+    priceV2 {
+      discount { description }
+    }
+    imagePack {
+      large { url }
+      medium { url }
+      small { url }
+    }
+  }
+}`
 
 type Appie struct {
 	loggerService *logger.Service
@@ -39,24 +61,26 @@ func (a *Appie) PerformProductsCheck(products []Product) ([]Product, []Product, 
 			return nil, nil, err
 		}
 
+		isBonus := info.IsBonus()
 		product.DiscountedProducts = append(product.DiscountedProducts, DiscountedProducts{
 			ProductID:   product.ID,
-			InBonus:     info.ProductCard.IsBonus,
-			Description: info.ProductCard.BonusMechanism,
+			InBonus:     isBonus,
+			Description: info.BonusMechanism(),
+			Label:       info.Title,
 		})
-		if len(info.ProductCard.Images) > 0 {
-			product.Image = info.ProductCard.Images[0].URL
+		if image := info.ImageURL(); image != "" {
+			product.Image = image
 		}
 
-		if info.ProductCard.IsBonus {
+		if isBonus {
 			inBonus = append(inBonus, product)
 		} else {
 			notInBonus = append(notInBonus, product)
 		}
-		a.loggerService.Info("Fetched product info", map[string]interface{}{
-			"isBonus":        info.ProductCard.IsBonus,
-			"bonusMechanism": info.ProductCard.BonusMechanism,
-			"images":         info.ProductCard.Images,
+		a.loggerService.Info("Fetched product info", map[string]any{
+			"isBonus":        isBonus,
+			"bonusMechanism": info.BonusMechanism(),
+			"image":          info.ImageURL(),
 			"title":          product.FriendlyName,
 		})
 	}
@@ -89,52 +113,84 @@ func (a *Appie) getAnonAuthToken() error {
 
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		a.loggerService.Error("Anon auth token request failed", map[string]interface{}{"error": err.Error()})
+		a.loggerService.Error("Anon auth token request failed", map[string]any{"error": err.Error()})
 		return err
 	}
 	defer resp.Body.Close()
 
 	var authResponse AnonAuthResponse
 	if err = json.NewDecoder(resp.Body).Decode(&authResponse); err != nil {
-		a.loggerService.Error("Anon auth token decoding failed", map[string]interface{}{"error": err.Error()})
+		a.loggerService.Error("Anon auth token decoding failed", map[string]any{"error": err.Error()})
 		return err
 	}
 
 	a.loggerService.Info("Got anon auth token", nil)
-	a.loggerService.Debug("Anon auth token", map[string]interface{}{"token": authResponse.AccessToken})
+	a.loggerService.Debug("Anon auth token", map[string]any{"token": authResponse.AccessToken})
 	a.authToken = authResponse.AccessToken
 
 	return nil
 }
 
-func (a *Appie) makeRequest(product Product) (ProductInfoResponse, error) {
-	url := fmt.Sprintf("%s/mobile-services/product/detail/v4/fir/%d", restURL, product.AppieId)
-	a.loggerService.Info("Fetching product info", map[string]interface{}{"product": product.FriendlyName})
-	a.loggerService.Debug("Product request URL", map[string]interface{}{"product": product.FriendlyName, "url": url})
+func (a *Appie) makeRequest(product Product) (*ProductDetails, error) {
+	a.loggerService.Info("Fetching product info", map[string]any{"product": product.FriendlyName})
+	a.loggerService.Debug("Product request", map[string]any{"product": product.FriendlyName, "url": graphQLURL, "appie_id": product.AppieId})
 
-	r, err := http.NewRequest("GET", url, nil)
+	body, err := json.Marshal(graphQLRequest{
+		Query:     productDetailsQuery,
+		Variables: map[string]any{"productId": product.AppieId},
+	})
 	if err != nil {
-		return ProductInfoResponse{}, err
+		return nil, err
+	}
+
+	r, err := http.NewRequest("POST", graphQLURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
 	}
 	a.addBaseHeaders(true, r)
 
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		a.loggerService.Error("Product info request failed", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
-		return ProductInfoResponse{}, err
+		a.loggerService.Error("Product info request failed", map[string]any{"product": product.FriendlyName, "error": err.Error()})
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var info ProductInfoResponse
-	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		a.loggerService.Error("Failed to decode product info response", map[string]interface{}{"product": product.FriendlyName, "error": err.Error()})
-		return ProductInfoResponse{}, err
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		a.loggerService.Error("Failed to read product info response", map[string]any{"product": product.FriendlyName, "error": err.Error()})
+		return nil, err
 	}
 
-	a.loggerService.Debug("Product info response", map[string]interface{}{
+	if resp.StatusCode >= 400 {
+		err = fmt.Errorf("product info request for %s returned %d: %s", product.FriendlyName, resp.StatusCode, string(respBody))
+		a.loggerService.Error("Product info request returned an error status", map[string]any{"product": product.FriendlyName, "status": resp.StatusCode, "body": string(respBody)})
+		return nil, err
+	}
+
+	var info ProductDetailsResponse
+	if err = json.Unmarshal(respBody, &info); err != nil {
+		a.loggerService.Error("Failed to decode product info response", map[string]any{"product": product.FriendlyName, "error": err.Error()})
+		return nil, err
+	}
+
+	if len(info.Errors) > 0 {
+		err = fmt.Errorf("graphql error for %s: %s", product.FriendlyName, info.Errors[0].Message)
+		a.loggerService.Error("Product info GraphQL error", map[string]any{"product": product.FriendlyName, "error": info.Errors[0].Message})
+		return nil, err
+	}
+
+	if info.Data.Product == nil {
+		err = fmt.Errorf("product %s (appie id %d) not found", product.FriendlyName, product.AppieId)
+		a.loggerService.Error("Product not found", map[string]any{"product": product.FriendlyName, "appie_id": product.AppieId})
+		return nil, err
+	}
+
+	details := info.Data.Product
+	a.loggerService.Debug("Product info response", map[string]any{
 		"product":         product.FriendlyName,
-		"is_bonus":        info.ProductCard.IsBonus,
-		"bonus_mechanism": info.ProductCard.BonusMechanism,
+		"is_bonus":        details.IsBonus(),
+		"bonus_mechanism": details.BonusMechanism(),
 	})
-	return info, nil
+	return details, nil
 }

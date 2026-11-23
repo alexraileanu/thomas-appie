@@ -37,16 +37,63 @@ type AnonAuthResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
-type ProductInfoResponse struct {
-	ProductId   uint `json:"productId"`
-	ProductCard struct {
-		Title  string `json:"title"`
-		Images []struct {
-			URL string `json:"url"`
-		} `json:"images"`
-		IsBonus          bool    `json:"isBonus"`
-		IsBonusPrice     bool    `json:"isBonusPrice"`
-		BonusMechanism   string  `json:"bonusMechanism"`
-		PriceBeforeBonus float32 `json:"priceBeforeBonus"`
-	} `json:"productCard"`
+type graphQLRequest struct {
+	Query     string                 `json:"query"`
+	Variables map[string]interface{} `json:"variables,omitempty"`
+}
+
+type imageRendition struct {
+	URL string `json:"url"`
+}
+
+// ProductDetails is the subset of AH's FetchProductDetails GraphQL product we use.
+type ProductDetails struct {
+	ID      int    `json:"id"`
+	Title   string `json:"title"`
+	PriceV2 struct {
+		Discount *struct {
+			Description string `json:"description"`
+		} `json:"discount"`
+	} `json:"priceV2"`
+	ImagePack []struct {
+		Large  *imageRendition `json:"large"`
+		Medium *imageRendition `json:"medium"`
+		Small  *imageRendition `json:"small"`
+	} `json:"imagePack"`
+}
+
+// IsBonus reports whether the product currently has a discount.
+func (p *ProductDetails) IsBonus() bool {
+	return p.PriceV2.Discount != nil
+}
+
+// BonusMechanism returns the discount description, or "" when not in bonus.
+func (p *ProductDetails) BonusMechanism() string {
+	if p.PriceV2.Discount == nil {
+		return ""
+	}
+	return p.PriceV2.Discount.Description
+}
+
+// ImageURL returns the medium image URL, falling back to large, then small.
+func (p *ProductDetails) ImageURL() string {
+	if len(p.ImagePack) == 0 {
+		return ""
+	}
+	pack := p.ImagePack[0]
+	for _, r := range []*imageRendition{pack.Medium, pack.Large, pack.Small} {
+		if r != nil && r.URL != "" {
+			return r.URL
+		}
+	}
+	return ""
+}
+
+type ProductDetailsResponse struct {
+	Data struct {
+		Product *ProductDetails `json:"product"`
+	} `json:"data"`
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
 }

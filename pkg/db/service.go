@@ -62,7 +62,6 @@ func (s *Service) GetDiscountedProductsThisWeek() ([]*appie.Product, error) {
 			product.LastBonus = &t
 		}
 	}
-	fmt.Printf("products: %+v\n", products)
 
 	return products, nil
 }
